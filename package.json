@@ -1,0 +1,23 @@
+{
+  "name": "react-hook-videojs",
+  "version": "1.0.0",
+  "description": "Easy React integration of Video.js using hooks.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react",
+    "hook",
+    "hooks",
+    "video.js",
+    "videojs"
+  ],
+  "peerDependencies": {
+    "react": "^16.7.0",
+    "react-dom": "^16.7.0",
+    "video.js": "^7.0.0"
+  },
+  "author": "Jimmy Callin",
+  "license": "MIT"
+}
