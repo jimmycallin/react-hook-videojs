@@ -12,7 +12,7 @@ React Hooks helps us package this quite nicely, and all you have to do to use th
 
 ```
 import React from "react";
-import useVideoJS from "react-hook-videojs";
+import { useVideoJS } from "react-hook-videojs";
 
 const App = () => {
   const videoUrl = "http://techslides.com/demos/sample-videos/small.mp4";
