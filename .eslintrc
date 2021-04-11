@@ -7,8 +7,10 @@
     "prettier/standard",
     "prettier/react"
   ],
+  "plugins": ["jest"],
   "env": {
-    "node": true
+    "node": true,
+    "jest/globals": true
   },
   "parserOptions": {
     "ecmaVersion": 2020,
