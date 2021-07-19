@@ -7,7 +7,7 @@
   "repository": "jimmycallin/react-hook-videojs",
   "main": "dist/index.js",
   "module": "dist/index.modern.js",
-  "source": "src/index.js",
+  "source": "src/index.jsx",
   "engines": {
     "node": ">=12"
   },
@@ -15,7 +15,7 @@
     "build": "microbundle-crl --no-compress --format modern,cjs",
     "start": "microbundle-crl watch --no-compress --format modern,cjs",
     "test": "run-s test:unit test:lint test:build",
-    "test:lint": "eslint .",
+    "test:lint": "eslint --ext .js --ext .jsx .",
     "test:unit": "cross-env CI=1 react-scripts test --env=jsdom",
     "predeploy": "cd example && npm install && npm run build"
   },
