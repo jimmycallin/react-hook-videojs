@@ -14,20 +14,25 @@
   "scripts": {
     "build": "microbundle-crl --no-compress --format modern,cjs",
     "start": "microbundle-crl watch --no-compress --format modern,cjs",
-    "test": "run-s test:unit test:lint test:build",
-    "test:lint": "eslint --ext .js --ext .jsx .",
-    "test:unit": "cross-env CI=1 react-scripts test --env=jsdom",
-    "predeploy": "cd example && npm install && npm run build"
+    "test": "npm run test:lint && npm run test:jest",
+    "test:jest": "jest",
+    "test:lint": "eslint --ext .js --ext .jsx ."
   },
   "peerDependencies": {
     "react": "^16.0.0",
     "video.js": "^7.0.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.14.6",
+    "@babel/preset-env": "^7.14.7",
+    "@babel/preset-react": "^7.14.5",
+    "@testing-library/react": "^12.0.0",
+    "babel-jest": "^27.0.6",
     "eslint": "^7.31.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-jest": "^24.3.5",
     "eslint-plugin-react": "^7.24.0",
+    "jest": "^27.0.6",
     "microbundle-crl": "^0.13.10",
     "npm-run-all": "^4.1.5",
     "prettier": "^2.3.2",
@@ -38,5 +43,11 @@
   "files": [
     "dist"
   ],
-  "dependencies": {}
+  "dependencies": {},
+  "jest": {
+    "testEnvironment": "jsdom",
+    "moduleNameMapper": {
+      "\\.(css|less|sass|scss)$": "<rootDir>/__mocks__/styleMock.js"
+    }
+  }
 }
