@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import videojs from "video.js";
-import "video.js/dist/video-js.css";
 
 export const useVideoJS = (videoJsOptions) => {
   const videoNode = useRef(null);

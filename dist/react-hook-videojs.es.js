@@ -1,8 +1,6 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import videojs from 'video.js';
-import 'video.js/dist/video-js.css';
-
-const useVideoJS = videoJsOptions => {
+import React, { useRef, useState, useEffect, useCallback } from "react";
+import videojs from "video.js";
+const useVideoJS = (videoJsOptions) => {
   const videoNode = useRef(null);
   const [ready, setReady] = useState(false);
   const changedKey = JSON.stringify(videoJsOptions);
@@ -16,19 +14,14 @@ const useVideoJS = videoJsOptions => {
       player.current.dispose();
     };
   }, [changedKey]);
-  const Video = useCallback(() => /*#__PURE__*/React.createElement("div", {
+  const Video = useCallback(() => /* @__PURE__ */ React.createElement("div", {
     "data-vjs-player": true,
     key: changedKey
-  }, /*#__PURE__*/React.createElement("video", {
+  }, /* @__PURE__ */ React.createElement("video", {
     ref: videoNode,
     className: "video-js"
   })), [changedKey]);
-  return {
-    Video,
-    ready,
-    player: player.current
-  };
+  return { Video, ready, player: player.current };
 };
-
 export { useVideoJS };
-//# sourceMappingURL=index.modern.js.map
+//# sourceMappingURL=react-hook-videojs.es.js.map

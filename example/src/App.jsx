@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import "./App.css";
 
 import { useVideoJS } from "react-hook-videojs";
+import "video.js/dist/video-js.css";
 
 const App = () => {
   const [source, setSource] = useState("//vjs.zencdn.net/v/oceans.mp4");

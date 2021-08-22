@@ -12,6 +12,7 @@ React Hooks helps us package this quite nicely, and all you have to do to use th
 
 ```
 import React from "react";
+import "video.js/dist/video-js.css";
 import { useVideoJS } from "react-hook-videojs";
 
 const App = () => {
