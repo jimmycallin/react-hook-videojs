@@ -14,7 +14,8 @@ const App = () => {
     controls,
     autoplay,
   };
-  const { Video, ready, player } = useVideoJS(videoJsOptions);
+  const className = "my-class";
+  const { Video, ready, player } = useVideoJS(videoJsOptions, className);
   console.log({ Video, ready, player });
   return (
     <>
