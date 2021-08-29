@@ -10,7 +10,7 @@ Due to how video.js mutates the DOM, integrating video.js with React can be a bi
 
 React Hooks helps us package this quite nicely, and all you have to do to use this package is:
 
-```javascript
+```jsx
 import React from "react";
 import "video.js/dist/video-js.css";
 import { useVideoJS } from "react-hook-videojs";
@@ -37,3 +37,38 @@ const App = () => {
 You may also provide an optional second string argument that will be appended as class name on the `video` DOM node.
 
 See their [options reference](https://docs.videojs.com/tutorial-options.html) for further information on the options argument.
+
+### Using with Tracks or other child components
+
+This hook now supports using features such as [tracks](https://docs.videojs.com/tutorial-tracks.html#text-tracks), and other child components of the `<video>` element.
+
+Example of using a text track:
+
+```jsx
+const App = () => {
+  // ...setup code from above
+
+  return (
+      <Video>
+        <track kind="captions" src="//example.com/path/to/captions.vtt" srclang="en" label="English" default />
+      </Video>
+  )
+}
+```
+
+_Note: Videojs supports adding `<track>` and `<sources>` elements programmatically_
+
+
+### Support for all `<video>` element attributes
+
+This hook supports all attributes for the native `<video>` element directly on the `<Video>` component.
+
+```jsx
+const App = () => {
+  return (
+    <Video muted autopictureinpicture />
+  )
+}
+```
+
+_Note: video.js supports many of these (and registration of listeners) through the player options_
