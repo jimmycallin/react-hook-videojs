@@ -12,10 +12,13 @@
     "node": ">=12"
   },
   "scripts": {
+    "clean": "rimraf dist",
     "build": "vite build",
     "test": "npm run test:lint && npm run test:jest",
     "test:jest": "jest",
-    "test:lint": "eslint --ext .js --ext .jsx ."
+    "test:lint": "eslint --ext .js --ext .jsx .",
+    "prepare": "npm run clean && npm run build",
+    "prepublishOnly": "npm run test"
   },
   "peerDependencies": {
     "react": "^16.8.0, ^17.0.0",
@@ -36,6 +39,7 @@
     "prettier": "^2.3.2",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
+    "rimraf": "^3.0.2",
     "video.js": "^7.13.3",
     "vite": "^2.4.4"
   },
