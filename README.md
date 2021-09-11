@@ -49,15 +49,20 @@ const App = () => {
   // ...setup code from above
 
   return (
-      <Video>
-        <track kind="captions" src="//example.com/path/to/captions.vtt" srclang="en" label="English" default />
-      </Video>
-  )
-}
+    <Video>
+      <track
+        kind="captions"
+        src="//example.com/path/to/captions.vtt"
+        srclang="en"
+        label="English"
+        default
+      />
+    </Video>
+  );
+};
 ```
 
 _Note: Videojs supports adding `<track>` and `<sources>` elements programmatically_
-
 
 ### Support for all `<video>` element attributes
 
@@ -65,10 +70,8 @@ This hook supports all attributes for the native `<video>` element directly on t
 
 ```jsx
 const App = () => {
-  return (
-    <Video muted autopictureinpicture />
-  )
-}
+  return <Video muted autopictureinpicture />;
+};
 ```
 
 _Note: video.js supports many of these (and registration of listeners) through the player options_
