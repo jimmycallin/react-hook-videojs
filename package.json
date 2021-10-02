@@ -1,6 +1,6 @@
 {
   "name": "react-hook-videojs",
-  "version": "2.0.1",
+  "version": "2.1.0-beta.1",
   "description": "A simple react hook to easily integrate video.js with React",
   "author": "jimmycallin",
   "license": "MIT",
