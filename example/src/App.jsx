@@ -19,7 +19,15 @@ const App = () => {
   console.log({ Video, ready, player });
   return (
     <>
-      <Video />
+      <Video>
+        <track
+          kind="captions"
+          src="//example.com/path/to/captions.vtt"
+          srcLang="en"
+          label="English"
+          default
+        />
+      </Video>
       <div style={{ display: "flex", flexDirection: "column", margin: "20px" }}>
         <label>
           Video source
