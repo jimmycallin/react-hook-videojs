@@ -17,13 +17,19 @@ export const useVideoJS = (videoJsOptions, classNames = "") => {
   }, [changedKey]);
 
   const Video = useCallback(
-    ({ children, ...props }) => (
-      <div data-vjs-player key={changedKey}>
-        <video ref={videoNode} className={`video-js ${classNames}`} {...props}>
-          {children}
-        </video>
-      </div>
-    ),
+    ({ children, ...props }) => {
+      return (
+        <div data-vjs-player key={changedKey}>
+          <video
+            ref={videoNode}
+            className={`video-js ${classNames}`}
+            {...props}
+          >
+            {children}
+          </video>
+        </div>
+      );
+    },
     [changedKey]
   );
   return { Video, ready, player: player.current };
