@@ -2,9 +2,9 @@ import React, { useRef, useState, useEffect, useCallback } from "react";
 import videojs from "video.js";
 
 export const useVideoJS = (videoJsOptions, classNames = "") => {
-  const videoNode = useRef(null);
   const [ready, setReady] = useState(false);
   const changedKey = JSON.stringify(videoJsOptions);
+  const videoNode = useRef(null);
   const player = useRef(null);
   useEffect(() => {
     player.current = videojs(videoNode.current, videoJsOptions);
