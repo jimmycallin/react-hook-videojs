@@ -6,8 +6,8 @@
     "serve": "vite preview"
   },
   "dependencies": {
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "react": "^18.1.0",
+    "react-dom": "^18.1.0",
     "react-hook-videojs": "file:.."
   },
   "devDependencies": {
