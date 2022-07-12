@@ -22,7 +22,7 @@
     "prepublishOnly": "npm run test"
   },
   "peerDependencies": {
-    "react": "^16.8.0, ^17.0.0, ^18.0.0",
+    "react": ">= 16.8.0 < 19",
     "video.js": "^7.0.0"
   },
   "devDependencies": {
