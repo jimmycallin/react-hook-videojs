@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "emitDeclarationOnly": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": ["es2017", "es2019", "dom"],
+    "baseUrl": "./",
+    "outDir": "./.tmp",
+    "jsx": "react",
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "isolatedModules": true,
+    "incremental": true,
+    "composite": true,
+    "allowJs": false
+  },
+  "include": ["./src/**/*.ts", "./src/**/*.tsx"]
+}

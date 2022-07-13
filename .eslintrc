@@ -1,9 +1,21 @@
 {
   "env": { "jest": true, "browser": true },
-  "extends": ["eslint:recommended", "plugin:react/recommended"],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "prettier"
+  ],
   "parserOptions": {
+    "project": "./tsconfig.json",
     "sourceType": "module",
     "ecmaVersion": 2020
   },
-  "settings": { "react": { "version": "detect" } }
+  "settings": { "react": { "version": "detect" } },
+  "rules": {
+    "@typescript-eslint/explicit-function-return-type": "error"
+  }
 }

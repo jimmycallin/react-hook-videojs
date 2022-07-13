@@ -2,4 +2,5 @@ build/
 dist/
 node_modules/
 .snapshots/
-*.min.js
+*.js
+*.jsx
