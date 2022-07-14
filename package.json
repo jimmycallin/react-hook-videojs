@@ -1,11 +1,11 @@
 {
   "name": "react-hook-videojs",
-  "version": "2.1.0-beta.3",
+  "version": "2.1.0-beta.1",
   "description": "A simple react hook to easily integrate video.js with React",
   "author": "jimmycallin",
   "license": "MIT",
   "repository": "jimmycallin/react-hook-videojs",
-  "types": "./dist/types.d.ts",
+  "types": "./dist/index.d.ts",
   "main": "dist/react-hook-videojs.umd.js",
   "module": "dist/react-hook-videojs.es.js",
   "source": "src/index.tsx",
@@ -24,7 +24,7 @@
     "prepublishOnly": "npm run test"
   },
   "peerDependencies": {
-    "react": ">= 16.8.0 < 19",
+    "react": "^16.8.0, ^17.0.0",
     "video.js": "^7.0.0"
   },
   "devDependencies": {
@@ -32,7 +32,7 @@
     "@babel/plugin-transform-typescript": "^7.18.8",
     "@babel/preset-env": "^7.14.7",
     "@babel/preset-react": "^7.14.5",
-    "@testing-library/react": "^13.3.0",
+    "@testing-library/react": "^12.0.0",
     "@types/jest": "^28.1.5",
     "@types/video.js": "^7.3.42",
     "@typescript-eslint/eslint-plugin": "^5.30.6",
@@ -46,8 +46,8 @@
     "jest": "^28.1.3",
     "jest-environment-jsdom": "^28.1.3",
     "prettier": "^2.3.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
     "rimraf": "^3.0.2",
     "ts-jest": "^28.0.5",
     "typescript": "^4.7.4",
