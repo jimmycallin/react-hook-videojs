@@ -4,7 +4,7 @@ import "./App.css";
 import { useVideoJS } from "react-hook-videojs";
 import "video.js/dist/video-js.css";
 
-const App = () => {
+const App = (): JSX.Element => {
   const [source, setSource] = useState("//vjs.zencdn.net/v/oceans.mp4");
   const [controls, setControls] = useState(true);
   const [autoplay, setAutoplay] = useState(false);
@@ -27,7 +27,7 @@ const App = () => {
             style={{ width: "300px" }}
             type="text"
             value={source}
-            onChange={(e) => setSource(e.target.value)}
+            onChange={(e): void => setSource(e.target.value)}
           />
         </label>
         <label>
@@ -35,7 +35,7 @@ const App = () => {
           <input
             type="checkbox"
             checked={controls}
-            onChange={(e) => setControls(e.target.checked)}
+            onChange={(e): void => setControls(e.target.checked)}
           />
         </label>
         <label>
@@ -43,7 +43,7 @@ const App = () => {
           <input
             type="checkbox"
             checked={autoplay}
-            onChange={(e) => setAutoplay(e.target.checked)}
+            onChange={(e): void => setAutoplay(e.target.checked)}
           />
         </label>
       </div>

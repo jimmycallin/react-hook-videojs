@@ -8,5 +8,5 @@
     "jsx": "preserve"
   },
   "exclude": ["./*.js", "./**/*.spec.*", "./**/*.test.*"],
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "example/**/*.tsx"]
 }

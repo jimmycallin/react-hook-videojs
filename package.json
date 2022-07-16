@@ -15,7 +15,8 @@
   "scripts": {
     "clean": "rimraf dist .tmp",
     "build": "vite build && tsc --project tsconfig.types.json",
-    "test": "npm run test:lint && npm run test:jest && npm run test:formatting",
+    "test": "npm run test:typescript && npm run test:lint && npm run test:jest && npm run test:formatting",
+    "test:typescript": "tsc --project tsconfig.types.json",
     "test:jest": "jest",
     "test:lint": "eslint ./src",
     "test:formatting": "prettier -c .",
