@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationDir": "./dist",
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "preserve"
+  },
+  "exclude": ["./*.js", "./**/*.spec.*", "./**/*.test.*"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

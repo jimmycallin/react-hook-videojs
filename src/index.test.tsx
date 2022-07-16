@@ -1,9 +1,9 @@
 import React from "react";
 import { render, waitFor, screen } from "@testing-library/react";
-import { useVideoJS } from "./index.jsx";
+import { useVideoJS } from "./index";
 
 const consoleError = console.error;
-console.error = (...err) => {
+console.error = (...err): void => {
   if (err[2] === "(CODE:4 MEDIA_ERR_SRC_NOT_SUPPORTED)") {
     // ignore error related to video file not supported by jsdom
   } else {
@@ -11,7 +11,7 @@ console.error = (...err) => {
   }
 };
 
-const App = () => {
+const App = (): JSX.Element => {
   const videoJsOptions = {
     sources: [{ src: "example.com/oceans.mp4" }],
   };
