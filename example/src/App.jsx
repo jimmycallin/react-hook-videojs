@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import "./App.css";
-
+import sample from "./sample.vtt?url";
+import "video.js/dist/video-js.css";
 // import { useVideoJS } from "react-hook-videojs";
 import { useVideoJS } from "../../src/index.jsx";
-import "video.js/dist/video-js.css";
 
 const App = () => {
   const [source, setSource] = useState("//vjs.zencdn.net/v/oceans.mp4");
+  const [vtt, setVtt] = useState(true);
   const [controls, setControls] = useState(true);
   const [autoplay, setAutoplay] = useState(false);
   const [isMount, setIsMount] = useState(true);
@@ -18,10 +19,23 @@ const App = () => {
   };
   const className = "my-class ";
   const { Video, ready, player } = useVideoJS(videoJsOptions, className);
-  console.log({ Video, ready, player });
+  // console.log({ Video, ready, player });
+  window.debugPlayer = player;
   return (
     <>
-      {isMount && <Video />}
+      {isMount && (
+        <Video>
+          {vtt ? (
+            <track
+              kind="captions"
+              src={sample}
+              srcLang="en"
+              label="English"
+              default
+            />
+          ) : null}
+        </Video>
+      )}
       <div style={{ display: "flex", flexDirection: "column", margin: "20px" }}>
         <label>
           Video source
@@ -30,6 +44,14 @@ const App = () => {
             type="text"
             value={source}
             onChange={(e) => setSource(e.target.value)}
+          />
+        </label>
+        <label>
+          VTT
+          <input
+            type="checkbox"
+            checked={vtt}
+            onChange={(e) => setVtt(e.target.checked)}
           />
         </label>
         <label>

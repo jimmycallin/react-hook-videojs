@@ -1,43 +1,49 @@
 /* eslint-disable react/prop-types */
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useLayoutEffect } from "react";
+import { forwardRef } from "react";
 import videojs from "video.js";
-import "video.js/dist/video-js.css";
-export const useVideoJS = (videoJsOptions, classNames = "") => {
-  const [ready, setReady] = useState(false);
-  const changedKey = JSON.stringify(videoJsOptions);
-  const videoNode = useRef(null);
-  const player = useRef(null);
-  const containerRef = useRef(null);
 
-  useEffect(() => {
-    () => {
-      if (player.current) {
-        player.current.dispose();
-        player.current = null;
-      }
-    };
-  }, []);
+const VideoJsWrapper = React.memo(
+  forwardRef(
+    (
+      { children, videoJsOptions, onReady, onDispose, classNames, ...props },
+      player
+    ) => {
+      const videoNode = useRef(null);
+      const containerRef = useRef(null);
+      const changedKey = JSON.stringify(videoJsOptions);
 
-  const Video = useCallback(
-    ({ children, ...props }) => {
-      useEffect(() => {
-        if (videoNode.current && containerRef.current) {
-          if (!containerRef.current.contains(videoNode.current.parentNode)) {
-            containerRef.current.appendChild(videoNode.current.parentNode);
-          }
+      const mounted = useRef(true);
 
+      useLayoutEffect(() => {
+        mounted.current = true;
+        const before = videoNode.current.parentNode.cloneNode(true);
+        if (!player.current) {
           player.current = videojs(videoNode.current, videoJsOptions);
           player.current.ready(() => {
-            setReady(true);
+            onReady();
           });
         }
+
         return () => {
+          mounted.current = false;
           if (player.current) {
-            setReady(false);
-            player.current.reset();
+            player.current.dispose();
+
+            if (
+              videoNode.current.parentNode &&
+              !containerRef.current.contains(videoNode.current.parentNode)
+            ) {
+              // issue is that this adds old nodes as well, and we need to clean them up first?
+              containerRef.current.appendChild(before);
+              videoNode.current = before.firstChild;
+            }
+            player.current = null;
+            // onDispose();
           }
         };
       }, [changedKey]);
+
       return (
         <div ref={containerRef}>
           <div data-vjs-player>
@@ -51,8 +57,31 @@ export const useVideoJS = (videoJsOptions, classNames = "") => {
           </div>
         </div>
       );
-    },
-    [classNames, changedKey]
-  );
+    }
+  )
+);
+
+VideoJsWrapper.displayName = "VideoJsWrapper";
+
+export const useVideoJS = (videoJsOptions, classNames = "") => {
+  const [ready, setReady] = useState(false);
+
+  const player = useRef(null);
+
+  const Video = ({ children, ...props }) => {
+    return (
+      <VideoJsWrapper
+        ref={player}
+        videoJsOptions={videoJsOptions}
+        classNames={classNames}
+        onReady={() => setReady(true)}
+        onDispose={() => setReady(false)}
+        {...props}
+      >
+        {children}
+      </VideoJsWrapper>
+    );
+  };
+
   return { Video, ready, player: player.current };
 };
