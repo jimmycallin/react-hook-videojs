@@ -40,7 +40,7 @@ See their [options reference](https://docs.videojs.com/tutorial-options.html) fo
 
 ### Using with Tracks or other child components
 
-This hook now supports using features such as [tracks](https://docs.videojs.com/tutorial-tracks.html#text-tracks), and other child components of the `<video>` element.
+This hook supports using features such as [tracks](https://docs.videojs.com/tutorial-tracks.html#text-tracks), and other child components of the `<video>` element.
 
 Example of using a text track:
 
@@ -53,7 +53,7 @@ const App = () => {
       <track
         kind="captions"
         src="//example.com/path/to/captions.vtt"
-        srclang="en"
+        srcLang="en"
         label="English"
         default
       />

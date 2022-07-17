@@ -16,11 +16,19 @@ export default defineConfig({
     },
     sourcemap: true,
     rollupOptions: {
-      external: ["react", "react-dom", "video.js"],
+      external: [
+        "react",
+        "react-dom",
+        "video.js",
+        "lodash.clonedeep",
+        "dequal",
+      ],
       output: {
         globals: {
           react: "React",
           "video.js": "videojs",
+          "lodash.clonedeep": "lodash.clonedeep",
+          dequal: "dequal",
         },
       },
     },
