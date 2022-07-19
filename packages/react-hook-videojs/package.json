@@ -15,10 +15,8 @@
   "scripts": {
     "clean": "rimraf dist .tmp",
     "build": "vite build && tsc --project tsconfig.types.json",
-    "test": "npm run test:lint && npm run test:vitest",
+    "test": "npm run test:vitest",
     "test:vitest": "vitest run",
-    "test:lint": "eslint ./src",
-    "test:formatting": "prettier -c .",
     "format": "prettier --write .",
     "prepare": "npm run clean && npm run build",
     "prepublishOnly": "npm run test",

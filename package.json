@@ -4,10 +4,10 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "npm run test:formatting && npm run test:lint",
-    "dev": "npm run dev --workspace example & npm run dev --workspace react-hook-videojs",
+    "test": "npm run test:formatting && npm run test:lint && npm run test --workspaces --if-present",
     "test:formatting": "prettier -c .",
     "test:lint": "eslint .",
+    "dev": "npm run dev --workspace example & npm run dev --workspace react-hook-videojs",
     "publish": "npm run publish --workspace react-hook-videojs"
   }
 }
