@@ -25,6 +25,7 @@
   },
   "peerDependencies": {
     "react": ">=16.8.0 < 19",
+    "react-dom": ">=16.8.0 < 19",
     "video.js": "^7.0.0"
   },
   "devDependencies": {
