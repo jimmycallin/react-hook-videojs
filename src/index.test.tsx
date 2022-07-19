@@ -1,3 +1,8 @@
+/**
+ * @vitest-environment jsdom
+ */
+
+import { test, expect } from "vitest";
 import React from "react";
 import { render, waitFor, screen } from "@testing-library/react";
 import { useVideoJS } from "./index";
