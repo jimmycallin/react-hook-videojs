@@ -4,6 +4,17 @@
 import { defineConfig } from "vite";
 import reactRefresh from "@vitejs/plugin-react-refresh";
 import path from "path";
+import pkg from "./package.json";
+
+const external = [
+  ...Object.keys(pkg.dependencies),
+  ...Object.keys(pkg.peerDependencies),
+];
+
+const globals = external.reduce((acc, name) => {
+  acc[name] = name;
+  return acc;
+}, {});
 
 export default defineConfig({
   plugins: [reactRefresh()],
@@ -16,20 +27,9 @@ export default defineConfig({
     },
     sourcemap: true,
     rollupOptions: {
-      external: [
-        "react",
-        "react-dom",
-        "video.js",
-        "lodash.clonedeep",
-        "dequal",
-      ],
+      external,
       output: {
-        globals: {
-          react: "React",
-          "video.js": "videojs",
-          "lodash.clonedeep": "lodash.clonedeep",
-          dequal: "dequal",
-        },
+        globals,
       },
     },
   },

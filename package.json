@@ -10,7 +10,7 @@
   "module": "dist/react-hook-videojs.es.js",
   "source": "src/index.tsx",
   "engines": {
-    "node": ">=14"
+    "node": ">=18"
   },
   "scripts": {
     "clean": "rimraf dist .tmp",
