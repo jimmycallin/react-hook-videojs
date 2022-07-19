@@ -7,6 +7,6 @@
     "allowSyntheticDefaultImports": true,
     "jsx": "preserve"
   },
-  "exclude": ["./*.js", "./**/*.spec.*", "./**/*.test.*"],
+  "exclude": ["./**/*.spec.*", "./**/*.test.*"],
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

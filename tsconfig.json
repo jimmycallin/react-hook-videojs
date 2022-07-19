@@ -16,5 +16,5 @@
     "composite": true,
     "allowJs": false
   },
-  "include": ["./src/**/*.ts", "./src/**/*.tsx"]
+  "include": ["./**/*.ts", "./**/*.tsx"]
 }

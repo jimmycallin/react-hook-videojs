@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import "./App.css";
 import sample from "./sample.vtt?url";
 import "video.js/dist/video-js.css";
-import { useVideoJS } from "../../src/index";
+import { useVideoJS } from "react-hook-videojs";
 
 const App = () => {
   const [source, setSource] = useState("//vjs.zencdn.net/v/oceans.mp4");
+  const h = 2;
   const [vtt, setVtt] = useState(true);
   const [controls, setControls] = useState(true);
   const [autoplay, setAutoplay] = useState(false);
