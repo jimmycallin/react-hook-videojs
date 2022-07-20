@@ -1,12 +1,12 @@
 # react-hook-videojs
 
-> A simple react hook to easily integrate video.js with React
+> A simple react hook to easily integrate video.js with React. Supports React 18 Strict Mode.
 
 [![NPM](https://img.shields.io/npm/v/react-hook-videojs.svg)](https://www.npmjs.com/package/react-hook-videojs)
 
 # react-hook-videojs
 
-Due to how video.js mutates the DOM, integrating video.js with React can be a bit tricky. Especially if you want to support video.js component updates and correctly dispose of any old player.
+Due to how video.js mutates the DOM, integrating video.js with React can be a quite tricky. Especially if you want to support video.js component updates and correctly dispose of any old player.
 
 React Hooks helps us package this quite nicely, and all you have to do to use this package is:
 
@@ -62,8 +62,6 @@ const App = () => {
 };
 ```
 
-_Note: Videojs supports adding `<track>` and `<sources>` elements programmatically_
-
 ### Support for all `<video>` element attributes
 
 This hook supports all attributes for the native `<video>` element directly on the `<Video>` component.
@@ -73,5 +71,3 @@ const App = () => {
   return <Video muted autopictureinpicture />;
 };
 ```
-
-_Note: video.js supports many of these (and registration of listeners) through the player options_
