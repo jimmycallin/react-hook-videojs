@@ -1,29 +1,90 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
 import sample from "./sample.vtt?url";
-import "video.js/dist/video-js.css";
-import { useVideoJS } from "react-hook-videojs";
+import VideoJS from '../../react-hook-videojs/src/index';
+import videojs from 'video.js';
 
-const App = () => {
-  const [source, setSource] = useState("//vjs.zencdn.net/v/oceans.mp4");
-  const h = 2;
-  const [vtt, setVtt] = useState(true);
-  const [controls, setControls] = useState(true);
-  const [autoplay, setAutoplay] = useState(false);
+const initialVideoJsOptions = {
+  autoplay: false,
+  controls: true,
+  responsive: true,
+  fluid: true,
+  sources: [{
+    src: '//vjs.zencdn.net/v/oceans.mp4'
+  }]
+};
+
+export const App = (props) => {
+
+  const [ src, setSrc ] = useState(initialVideoJsOptions.sources[0].src);
+  const [vtt, setVtt] = useState(false);
   const [isMount, setIsMount] = useState(true);
+  const [videoJsOptions, setVideoJsOptions] = useState(initialVideoJsOptions);
 
-  const videoJsOptions = {
-    sources: [{ src: source }],
-    controls,
-    autoplay,
+  const playerRef = useRef(null);
+
+  const handleShowControls = (e) => {
+    setVideoJsOptions({
+      ...videoJsOptions,
+      controls: !videoJsOptions.controls,
+    });
+  }
+  const handleAutoplay = (e) => {
+    setVideoJsOptions({
+      ...videoJsOptions,
+      autoplay: !videoJsOptions.autoplay,
+    })
+  }
+
+  const handlePlay = (e) => {
+    if(!playerRef.current) return;
+    const player = playerRef.current;
+    player.log("starting playback");
+    player.play();
+  }
+
+  const handlePause = (e) => {
+    if(!playerRef.current) return;
+    const player = playerRef.current;
+    player.log("pauzing");
+    player.pause();
+  }
+
+  const handlePlayerReady = (player) => {
+    playerRef.current = player;
+
+    // You can handle player events here, for example:
+    player.on('waiting', () => {
+      videojs.log('player is waiting');
+    });
+
+    player.on('dispose', () => {
+      videojs.log('player will dispose');
+    });
   };
-  const className = "my-class";
-  const { Video, ready, player } = useVideoJS(videoJsOptions, className);
-  console.log({ Video, ready, player });
-  return (
-    <>
-      {isMount && (
-        <Video>
+
+  // debounce for setting videosource
+  useEffect(() => {
+    let timer;
+    if( src ) {
+      timer = setTimeout(() => {
+        setVideoJsOptions({
+          ...videoJsOptions,
+          sources: [{src: src}],
+        })
+      }, 600);
+    }
+
+    return () => {
+      if( timer ) clearTimeout(timer);
+    }
+    
+  }, [src])
+
+  return(
+    <div style={{maxWidth: '1200px', width: '100%', minHeight: '400px', background: '#EEE', padding: '8px', margin: '0 auto'}}>
+      {isMount &&
+        <VideoJS onReady={handlePlayerReady} options={videoJsOptions}>
           {vtt ? (
             <track
               kind="captions"
@@ -33,20 +94,20 @@ const App = () => {
               default
             />
           ) : null}
-        </Video>
-      )}
+        </VideoJS>
+      }
       <div style={{ display: "flex", flexDirection: "column", margin: "20px" }}>
         <label>
-          Video source
+          Video source&nbsp;
           <input
             style={{ width: "300px" }}
             type="text"
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
+            value={src}
+            onChange={e => setSrc(e.target.value)}
           />
         </label>
         <label>
-          VTT
+          VTT&nbsp;
           <input
             type="checkbox"
             checked={vtt}
@@ -54,19 +115,21 @@ const App = () => {
           />
         </label>
         <label>
-          Show controls
+          Show controls&nbsp;
           <input
+            disabled
             type="checkbox"
-            checked={controls}
-            onChange={(e) => setControls(e.target.checked)}
+            checked={videoJsOptions.controls}
+            onChange={handleShowControls}
           />
+          &nbsp;(Does not seem to work yett...)
         </label>
         <label>
-          Autoplay
+          Autoplay&nbsp;
           <input
             type="checkbox"
-            checked={autoplay}
-            onChange={(e) => setAutoplay(e.target.checked)}
+            checked={videoJsOptions.autoplay}
+            onChange={handleAutoplay}
           />
         </label>
         <label>
@@ -77,9 +140,14 @@ const App = () => {
             onChange={() => setIsMount((m) => !m)}
           />
         </label>
+        <button onClick={handlePlay} style={{margin: '4px', height: '2em'}}>
+          Play
+        </button>
+        <button onClick={handlePause} style={{margin: '4px', height: '2em'}}>
+          Pause
+        </button>
       </div>
-    </>
+    </div>
   );
-};
-
+}
 export default App;
