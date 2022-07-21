@@ -34,20 +34,8 @@ export const VideoJS: React.FC<VideoJSProps> = (props) => {
       if (!videoElement) return;
 
       const player = playerRef.current = videojs(videoElement, options, () => {
-        videojs.log('player is ready');
         onReady && onReady(player);
       });
-
-    // You could update an existing player in the `else` block here
-    // on prop change, for example:
-    } else {
-      const player = playerRef.current;
-
-      // videojs.log("updating options", options);
-      
-      player.autoplay(options.autoplay || false);
-      player.controls(options.controls || true);
-      player.src(options.sources?.[0].src || []);
     }
   }, [options, videoRef]);
 
