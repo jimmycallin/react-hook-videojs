@@ -17,43 +17,41 @@ const initialVideoJsOptions = {
 export const App = (props) => {
 
   const [ src, setSrc ] = useState(initialVideoJsOptions.sources[0].src);
+  const [ controls, setControls ] = useState(initialVideoJsOptions.controls);
+  const [ autoplay, setAutoplay ] = useState(initialVideoJsOptions.autoplay);
   const [vtt, setVtt] = useState(false);
   const [isMount, setIsMount] = useState(true);
-  const [videoJsOptions, setVideoJsOptions] = useState(initialVideoJsOptions);
 
   const playerRef = useRef(null);
 
   const handleShowControls = (e) => {
-    setVideoJsOptions({
-      ...videoJsOptions,
-      controls: !videoJsOptions.controls,
-    });
+    setControls(e.target.checked);
+    if(!playerRef.current) return;
+    const player = playerRef.current;
+    player.controls(e.target.checked);
   }
   const handleAutoplay = (e) => {
-    setVideoJsOptions({
-      ...videoJsOptions,
-      autoplay: !videoJsOptions.autoplay,
-    })
+    setAutoplay(e.target.checked);
+    if(!playerRef.current) return;
+    const player = playerRef.current;
+    player.autoplay(e.target.checked);
   }
 
   const handlePlay = (e) => {
     if(!playerRef.current) return;
     const player = playerRef.current;
-    player.log("starting playback");
     player.play();
   }
 
   const handlePause = (e) => {
     if(!playerRef.current) return;
     const player = playerRef.current;
-    player.log("pauzing");
     player.pause();
   }
 
   const handlePlayerReady = (player) => {
     playerRef.current = player;
-
-    // You can handle player events here, for example:
+    
     player.on('waiting', () => {
       videojs.log('player is waiting');
     });
@@ -66,12 +64,10 @@ export const App = (props) => {
   // debounce for setting videosource
   useEffect(() => {
     let timer;
-    if( src ) {
+    const player = playerRef.current;
+    if( src && player ) {
       timer = setTimeout(() => {
-        setVideoJsOptions({
-          ...videoJsOptions,
-          sources: [{src: src}],
-        })
+        player.src(src);
       }, 600);
     }
 
@@ -84,7 +80,7 @@ export const App = (props) => {
   return(
     <div style={{maxWidth: '1200px', width: '100%', minHeight: '400px', background: '#EEE', padding: '8px', margin: '0 auto'}}>
       {isMount &&
-        <VideoJS onReady={handlePlayerReady} options={videoJsOptions}>
+        <VideoJS onReady={handlePlayerReady} options={initialVideoJsOptions}>
           {vtt ? (
             <track
               kind="captions"
@@ -117,18 +113,17 @@ export const App = (props) => {
         <label>
           Show controls&nbsp;
           <input
-            disabled
+            // disabled
             type="checkbox"
-            checked={videoJsOptions.controls}
+            checked={controls}
             onChange={handleShowControls}
           />
-          &nbsp;(Does not seem to work yett...)
         </label>
         <label>
           Autoplay&nbsp;
           <input
             type="checkbox"
-            checked={videoJsOptions.autoplay}
+            checked={autoplay}
             onChange={handleAutoplay}
           />
         </label>
