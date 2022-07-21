@@ -8,50 +8,68 @@ const initialVideoJsOptions = {
   autoplay: false,
   controls: true,
   responsive: true,
+  aspectRatio: '16:9',
   fluid: true,
   sources: [{
     src: '//vjs.zencdn.net/v/oceans.mp4'
   }]
 };
 
+const effectTime = 1500; // in ms
+
 export const App = (props) => {
 
   const [ src, setSrc ] = useState(initialVideoJsOptions.sources[0].src);
   const [ controls, setControls ] = useState(initialVideoJsOptions.controls);
   const [ autoplay, setAutoplay ] = useState(initialVideoJsOptions.autoplay);
-  const [vtt, setVtt] = useState(false);
-  const [isMount, setIsMount] = useState(true);
+  const [ muted, setMuted ] = useState(false);
+  const [ vtt, setVtt ] = useState(false);
+  const [ mounted, setMounted ] = useState(true);
+  const [ isMount, setIsMount ] = useState(true);
 
   const playerRef = useRef(null);
 
   const handleShowControls = (e) => {
     setControls(e.target.checked);
-    if(!playerRef.current) return;
     const player = playerRef.current;
-    player.controls(e.target.checked);
+    player && player.controls(e.target.checked);
   }
   const handleAutoplay = (e) => {
     setAutoplay(e.target.checked);
-    if(!playerRef.current) return;
     const player = playerRef.current;
-    player.autoplay(e.target.checked);
+    player && player.autoplay(e.target.checked);
   }
 
   const handlePlay = (e) => {
-    if(!playerRef.current) return;
     const player = playerRef.current;
-    player.play();
+    player && player.play();
   }
 
   const handlePause = (e) => {
-    if(!playerRef.current) return;
     const player = playerRef.current;
-    player.pause();
+    player && player.pause();
   }
+  const handleMuted = (e) => {
+    setMuted(e.target.checked)
+    const player = playerRef.current;
+    player && player.muted(e.target.checked);
+  }
+
 
   const handlePlayerReady = (player) => {
     playerRef.current = player;
     
+    // load any set options (on remount)
+    if( initialVideoJsOptions.sources[0].src !== src ) {
+      playerRef.current.src(src);
+    }
+    if( initialVideoJsOptions.controls !== controls ) {
+      playerRef.current.controls(controls);
+    }
+    if( initialVideoJsOptions.autoplay !== autoplay ) {
+      playerRef.current.autoplay(autoplay);
+    }
+
     player.on('waiting', () => {
       videojs.log('player is waiting');
     });
@@ -70,28 +88,62 @@ export const App = (props) => {
         player.src(src);
       }, 600);
     }
-
     return () => {
       if( timer ) clearTimeout(timer);
     }
-    
   }, [src])
 
+  // wait for fadeout animation
+  useEffect(() => {
+    let timer;
+    if(mounted) {
+      setIsMount(mounted);
+    } 
+    else {
+      timer = setTimeout(() => {
+        setIsMount(mounted);
+      }, effectTime);
+    }
+    return () => {
+      if( timer ) clearTimeout(timer);
+    }
+  }, [mounted])
+
   return(
-    <div style={{maxWidth: '1200px', width: '100%', minHeight: '400px', background: '#EEE', padding: '8px', margin: '0 auto'}}>
-      {isMount &&
-        <VideoJS onReady={handlePlayerReady} options={initialVideoJsOptions}>
-          {vtt ? (
-            <track
-              kind="captions"
-              src={sample}
-              srcLang="en"
-              label="English"
-              default
-            />
-          ) : null}
-        </VideoJS>
-      }
+    <div 
+      style={{
+        maxWidth: '1100px', 
+        width: 'calc(100% - 16px)', 
+        minHeight: '400px', 
+        background: '#EEE', 
+        padding: '8px',
+        borderRadius: '8px',
+        margin: '8px auto',
+    }}>
+        <div 
+          style={{
+            animation: `${mounted ? 'fadeIn': 'fadeOut'} ${Math.round(effectTime/100)/10}s`, 
+            width: '100%',
+            aspectRatio: "16 / 9",
+            display: 'flex', 
+            justifyContent: 'center'
+          }}
+        >
+        { isMount &&
+          <VideoJS onReady={handlePlayerReady} options={initialVideoJsOptions}>
+            {vtt ? (
+              <track
+                kind="captions"
+                src={sample}
+                srcLang="en"
+                label="English"
+                default
+              />
+            ) : null}
+          </VideoJS>
+        }
+      </div>
+      <hr />
       <div style={{ display: "flex", flexDirection: "column", margin: "20px" }}>
         <label>
           Video source&nbsp;
@@ -128,17 +180,25 @@ export const App = (props) => {
           />
         </label>
         <label>
+          Mute&nbsp;
+          <input
+            type="checkbox"
+            checked={muted}
+            onChange={handleMuted}
+          />
+        </label>
+        <label>
           Mounted
           <input
             type="checkbox"
-            checked={isMount}
-            onChange={() => setIsMount((m) => !m)}
+            checked={mounted}
+            onChange={(e) => setMounted(e.target.checked)}
           />
         </label>
-        <button onClick={handlePlay} style={{margin: '4px', height: '2em'}}>
+        <button onClick={handlePlay}>
           Play
         </button>
-        <button onClick={handlePause} style={{margin: '4px', height: '2em'}}>
+        <button onClick={handlePause}>
           Pause
         </button>
       </div>
