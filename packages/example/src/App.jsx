@@ -7,6 +7,7 @@ import videojs from 'video.js';
 const initialVideoJsOptions = {
   autoplay: false,
   controls: true,
+  muted: false,
   responsive: true,
   aspectRatio: '16:9',
   fluid: true,
@@ -68,6 +69,9 @@ export const App = (props) => {
     }
     if( initialVideoJsOptions.autoplay !== autoplay ) {
       playerRef.current.autoplay(autoplay);
+    }
+    if( initialVideoJsOptions.muted !== muted ) {
+      playerRef.current.muted(muted);
     }
 
     player.on('waiting', () => {
