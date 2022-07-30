@@ -36,7 +36,7 @@ const App = () => {
 `useVideoJS` takes an options argument, and passes it without modifications to video.js.
 You may also provide an optional second string argument that will be appended as class name on the `video` DOM node.
 
-See their [options reference](https://docs.videojs.com/tutorial-options.html) for further information on the options argument.
+See their [options reference](https://videojs.com/guides/options) for further information on the options argument.
 
 ### Using with Tracks or other child components
 
