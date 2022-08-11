@@ -9,8 +9,9 @@
   "main": "dist/react-hook-videojs.umd.js",
   "module": "dist/react-hook-videojs.es.js",
   "source": "src/index.tsx",
+  "engineStrict": false,
   "engines": {
-    "node": ">=18"
+    "node": ">=16"
   },
   "scripts": {
     "clean": "rimraf dist .tmp",
