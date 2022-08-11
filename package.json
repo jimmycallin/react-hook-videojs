@@ -8,7 +8,7 @@
     "test:formatting": "prettier -c .",
     "test:lint": "eslint .",
     "dev": "npm run dev --workspace example & npm run dev --workspace react-hook-videojs",
-    "publish": "npm run publish --workspace react-hook-videojs"
+    "publish": "npm publish --workspace react-hook-videojs"
   },
   "version": "3.0.2"
 }
