@@ -1,7 +1,7 @@
 import React, {
   useRef,
   useState,
-  useLayoutEffect,
+  useEffect,
   useCallback,
   forwardRef,
   HTMLProps,
@@ -49,7 +49,7 @@ const VideoJsWrapper = forwardRef<
     const videoNode = useRef<HTMLVideoElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
 
-    useLayoutEffect(() => {
+    useEffect(() => {
       if (!videoNode.current?.parentNode) return;
 
       // Once we initialize the player, videojs will start mutating the DOM.
