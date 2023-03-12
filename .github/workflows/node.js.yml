@@ -30,17 +30,14 @@ jobs:
       - run: npm test && npm test --workspaces --if-present
   formatting:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        node-version: [16.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
+        node-version: [18.x]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
-          node-version: 16.x
+          node-version: ${{ matrix.node-version }}
           cache: "npm"
       - run: npm ci
       - run: npx prettier -c .
