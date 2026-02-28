@@ -1,14 +1,28 @@
 {
   "name": "@react-hook-videojs/root",
-  "workspaces": [
-    "packages/*"
-  ],
+  "type": "module",
+  "packageManager": "pnpm@10.30.3",
   "scripts": {
-    "test": "npm run test:formatting && npm run test:lint && npm run test --workspaces --if-present",
-    "test:formatting": "prettier -c .",
-    "test:lint": "eslint .",
-    "dev": "npm run dev --workspace example & npm run dev --workspace react-hook-videojs",
-    "publish": "npm publish --workspace react-hook-videojs"
+    "test": "pnpm run test:formatting && pnpm run test:lint && pnpm run test:typecheck && pnpm run test:unit",
+    "test:formatting": "oxfmt --check .",
+    "test:lint": "oxlint .",
+    "test:typecheck": "pnpm --filter react-hook-videojs exec tsc -b ../../tsconfig.json",
+    "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "dev": "pnpm -r --parallel --filter example --filter react-hook-videojs run dev",
+    "publish": "pnpm --filter react-hook-videojs publish"
   },
-  "version": "3.0.2"
+  "version": "3.0.2",
+  "devDependencies": {
+    "@vitest/browser": "^4.0.18",
+    "@vitest/browser-playwright": "^4.0.18",
+    "@vitest/coverage-v8": "^4.0.18",
+    "jsdom": "^28.1.0",
+    "oxfmt": "^0.35.0",
+    "oxlint": "^1.22.0",
+    "playwright": "^1.58.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "vitest": "^4.0.18"
+  }
 }

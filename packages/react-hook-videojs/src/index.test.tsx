@@ -1,192 +1,291 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { test, expect } from "vitest";
-import React from "react";
-import { render, waitFor, renderHook, cleanup } from "@testing-library/react";
-import { useVideoJS } from "./index.jsx";
+import React, { useLayoutEffect } from "react";
+import { afterEach, expect, test } from "vitest";
+import { cleanup, render, waitFor } from "@testing-library/react";
+import { useVideoJS } from "./index";
 
-import { afterEach } from "vitest";
-import { VideoJsPlayerOptions } from "video.js";
+type VideoJsOptions = {
+  sources?: Array<{ src: string; type?: string }>;
+  controls?: boolean;
+  autoplay?: boolean;
+  muted?: boolean;
+};
 
-afterEach(() => {
-  cleanup();
-});
+const createdObjectUrls: string[] = [];
 
-Object.defineProperty(window.HTMLMediaElement.prototype, "load", {
-  configurable: true,
-  get() {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    return (): void => {};
-  },
-});
+const createFixtureVideoUrl = async (): Promise<string> => {
+  const mimeTypeCandidates = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+  ];
+  const mimeType = mimeTypeCandidates.find((candidate) =>
+    MediaRecorder.isTypeSupported(candidate),
+  );
 
-Object.defineProperty(window.HTMLMediaElement.prototype, "canPlayType", {
-  configurable: true,
-  get() {
-    return (): string => "maybe";
-  },
-});
+  if (!mimeType) {
+    throw new Error(
+      "No supported MediaRecorder video mime type in test browser",
+    );
+  }
 
-const App = ({
+  const canvas = document.createElement("canvas");
+  canvas.width = 2;
+  canvas.height = 2;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Could not create canvas context for video fixture");
+  }
+
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const stream = canvas.captureStream(15);
+  const recorder = new MediaRecorder(stream, { mimeType });
+  const chunks: BlobPart[] = [];
+
+  recorder.addEventListener("dataavailable", (event) => {
+    if (event.data.size > 0) {
+      chunks.push(event.data);
+    }
+  });
+
+  const stopPromise = new Promise<void>((resolve) => {
+    recorder.addEventListener("stop", () => {
+      resolve();
+    });
+  });
+
+  recorder.start();
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 150);
+  });
+  recorder.stop();
+  await stopPromise;
+
+  stream.getTracks().forEach((track) => {
+    track.stop();
+  });
+
+  const videoBlob = new Blob(chunks, { type: mimeType });
+  const objectUrl = URL.createObjectURL(videoBlob);
+  createdObjectUrls.push(objectUrl);
+
+  return objectUrl;
+};
+
+const HookHarness = ({
   options,
   mounted = true,
 }: {
-  options: VideoJsPlayerOptions;
-  mounted: boolean;
-}): JSX.Element => {
-  const { Video, ready } = useVideoJS(options);
+  options: VideoJsOptions;
+  mounted?: boolean;
+}): React.JSX.Element => {
+  const { Video, ready, player } = useVideoJS(options);
   return (
     <div>
-      {ready ? "Ready: true" : "Ready: false"}
-      {mounted ? <Video /> : null}
+      <span data-testid="ready">{ready ? "true" : "false"}</span>
+      <span data-testid="player">{player ? "set" : "null"}</span>
+      {mounted ? <Video data-testid="video" /> : null}
     </div>
   );
 };
 
-test("can reinitialize video player with new url", async () => {
-  const videoJsOptions = {
-    sources: [{ src: "http://example.com/oceans.mp4" }],
-  };
-  const { getByText, getByTitle, getByRole, rerender } = render(
-    <App options={videoJsOptions} />
+afterEach(() => {
+  cleanup();
+
+  while (createdObjectUrls.length > 0) {
+    const objectUrl = createdObjectUrls.pop();
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+});
+
+test("initializes in browser and attaches a playable media source", async () => {
+  const source = await createFixtureVideoUrl();
+  const { getByTestId, container } = render(
+    <HookHarness
+      options={{ sources: [{ src: source, type: "video/webm" }] }}
+    />,
   );
 
-  await waitFor(() => getByText("Ready: true"));
-  expect(getByTitle("Play Video"));
-  expect(getByText("Ready: true"));
+  await waitFor(() => expect(getByTestId("ready").textContent).toBe("true"));
+  await waitFor(() => expect(getByTestId("player").textContent).toBe("set"));
 
-  const videoElements = getByRole(
-    "region",
-    "Video Player"
-  ).getElementsByTagName("video");
-  expect(videoElements.length).toBe(1);
-  const videoElement = videoElements[0];
+  const videoElement = container.querySelector("video");
+  expect(videoElement).toBeTruthy();
+  expect(videoElement?.tagName).toBe("VIDEO");
 
   await waitFor(() => {
-    expect(videoElement.getAttribute("src")).toEqual(
-      "http://example.com/oceans.mp4"
-    );
+    const currentSource = videoElement?.currentSrc || videoElement?.src || "";
+    expect(currentSource).toContain("blob:");
   });
+});
+
+test("loads local fixture media without native media error", async () => {
+  const source = await createFixtureVideoUrl();
+  const { container } = render(
+    <HookHarness
+      options={{ sources: [{ src: source, type: "video/webm" }] }}
+    />,
+  );
+  const videoElement = container.querySelector("video");
+  expect(videoElement).toBeTruthy();
+
+  await waitFor(() => {
+    const currentSource = videoElement?.currentSrc || videoElement?.src || "";
+    expect(currentSource).toContain("blob:");
+  });
+
+  await waitFor(() => {
+    expect(videoElement?.error).toBeNull();
+    expect(videoElement?.readyState ?? 0).toBeGreaterThan(0);
+  });
+});
+
+test("autoplay starts playback and advances media time", async () => {
+  const source = await createFixtureVideoUrl();
+
+  const { container } = render(
+    <HookHarness
+      options={{
+        autoplay: true,
+        muted: true,
+        sources: [{ src: source, type: "video/webm" }],
+      }}
+    />,
+  );
+
+  const videoElement = await waitFor(() => {
+    const element = container.querySelector("video");
+    expect(element).toBeTruthy();
+    return element as HTMLVideoElement;
+  });
+
+  await waitFor(() => {
+    const playerRoot = container.querySelector(".video-js");
+
+    expect(playerRoot?.classList.contains("vjs-playing")).toBe(true);
+    expect(playerRoot?.classList.contains("vjs-has-started")).toBe(true);
+    expect(videoElement?.paused).toBe(false);
+  });
+
+  await waitFor(() => {
+    expect(videoElement.readyState).toBeGreaterThan(1);
+    expect(videoElement.currentTime > 0 || videoElement.ended).toBe(true);
+  });
+});
+
+test("reinitializes player and swaps the media source when options change", async () => {
+  const firstSource = await createFixtureVideoUrl();
+  const secondSource = await createFixtureVideoUrl();
+
+  const { rerender, container } = render(
+    <HookHarness
+      options={{ sources: [{ src: firstSource, type: "video/webm" }] }}
+    />,
+  );
+
+  await waitFor(() => {
+    const videoElement = container.querySelector("video");
+    const currentSource = videoElement?.currentSrc || videoElement?.src || "";
+    expect(currentSource).toContain(firstSource);
+  });
+
   rerender(
-    <App options={{ sources: [{ src: "http://example.com/waves.mp4" }] }} />
+    <HookHarness
+      options={{ sources: [{ src: secondSource, type: "video/webm" }] }}
+    />,
   );
-  const videoElementsAfterRerender = getByRole(
-    "region",
-    "Video Player"
-  ).getElementsByTagName("video");
+
   await waitFor(() => {
-    expect(videoElementsAfterRerender.length).toBe(1);
+    const videoElement = container.querySelector("video");
+    const currentSource = videoElement?.currentSrc || videoElement?.src || "";
+    expect(currentSource).toContain(secondSource);
   });
-  const videoElementAfterRerender = videoElementsAfterRerender[0];
+});
+
+test("recovers when ref points to a detached video but container still has a connected video", async () => {
+  const firstSource = await createFixtureVideoUrl();
+  const secondSource = await createFixtureVideoUrl();
+  const { rerender, container } = render(
+    <HookHarness
+      options={{ sources: [{ src: firstSource, type: "video/webm" }] }}
+    />,
+  );
+
   await waitFor(() => {
-    expect(videoElementAfterRerender.getAttribute("src")).toEqual(
-      "http://example.com/waves.mp4"
+    const videoElement = container.querySelector("video");
+    const currentSource = videoElement?.currentSrc || videoElement?.src || "";
+    expect(currentSource).toContain(firstSource);
+  });
+
+  const originalVideoWrapper = container.querySelector("[data-vjs-player]");
+  expect(originalVideoWrapper).toBeTruthy();
+  const wrapperParent = originalVideoWrapper?.parentNode;
+  expect(wrapperParent).toBeTruthy();
+
+  const replacementVideoWrapper = originalVideoWrapper?.cloneNode(true);
+  if (wrapperParent && originalVideoWrapper && replacementVideoWrapper) {
+    wrapperParent.replaceChild(replacementVideoWrapper, originalVideoWrapper);
+  }
+
+  rerender(
+    <HookHarness
+      options={{ sources: [{ src: secondSource, type: "video/webm" }] }}
+    />,
+  );
+
+  await waitFor(() => {
+    const videoElement = container.querySelector("video");
+    const currentSource = videoElement?.currentSrc || videoElement?.src || "";
+    expect(currentSource).toContain(secondSource);
+  });
+});
+
+test("skips initialization when the rendered video gets detached before effect runs", async () => {
+  const source = await createFixtureVideoUrl();
+
+  const DetachedBeforeEffectHarness = (): React.JSX.Element => {
+    const { Video, ready, player } = useVideoJS({
+      sources: [{ src: source, type: "video/webm" }],
+    });
+
+    useLayoutEffect(() => {
+      const videoElement = document.querySelector("video");
+      videoElement?.remove();
+    }, []);
+
+    return (
+      <div>
+        <span data-testid="ready">{ready ? "true" : "false"}</span>
+        <span data-testid="player">{player ? "set" : "null"}</span>
+        <Video />
+      </div>
     );
-  });
-});
-
-test("loads and displays a video", async () => {
-  const videoJsOptions = {
-    sources: [{ src: "http://example.com/oceans.mp4" }],
   };
-  const { getByText, getByTitle, getByRole, unmount } = render(
-    <App options={videoJsOptions} />
-  );
 
-  await waitFor(() => getByText("Ready: true"));
-  expect(getByTitle("Play Video"));
-  expect(getByText("Ready: true"));
-
-  const videoElement = getByRole("region", "Video Player").getElementsByTagName(
-    "video"
-  )[0];
-
+  const { getByTestId } = render(<DetachedBeforeEffectHarness />);
   await waitFor(() => {
-    expect(videoElement.getAttribute("src")).toEqual(
-      "http://example.com/oceans.mp4"
-    );
+    expect(getByTestId("ready").textContent).toBe("false");
+    expect(getByTestId("player").textContent).toBe("null");
   });
-
-  // unmounting should remove all video elements that video.js have created
-
-  unmount();
-  expect(document.body.innerHTML).toEqual("<div></div>");
 });
 
-test("unmounting video should remove all videojs DOM nodes", async () => {
-  const videoJsOptions = {
-    sources: [{ src: "http://example.com/oceans.mp4" }],
-  };
-  const { getByText, getByTitle, getByRole, rerender } = render(
-    <App options={videoJsOptions} />
+test("does not initialize a player when Video is not rendered", async () => {
+  const source = await createFixtureVideoUrl();
+  const { getByTestId } = render(
+    <HookHarness options={{ sources: [{ src: source }] }} mounted={false} />,
   );
 
-  await waitFor(() => getByText("Ready: true"));
-  expect(getByTitle("Play Video"));
-  expect(getByText("Ready: true"));
+  expect(getByTestId("ready").textContent).toBe("false");
+  expect(getByTestId("player").textContent).toBe("null");
 
-  const videoElement = getByRole("region", "Video Player").getElementsByTagName(
-    "video"
-  )[0];
-
-  await waitFor(() => {
-    expect(videoElement.getAttribute("src")).toEqual(
-      "http://example.com/oceans.mp4"
-    );
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 25);
   });
 
-  // removing video.js player should remove all video elements that video.js have created
-
-  rerender(<App options={videoJsOptions} mounted={false} />);
-  expect(document.body.innerHTML).toEqual("<div><div>Ready: false</div></div>");
-});
-
-test("useVideoJs initialization without rendering <Video/>", async () => {
-  const videoJsOptions = {
-    sources: [{ src: "example.com/oceans.mp4" }],
-  };
-  const { result } = renderHook(() => useVideoJS(videoJsOptions));
-  expect(result.current).toEqual({
-    Video: expect.any(Function),
-    player: null,
-    ready: false,
-  });
-
-  // Since we don't render the Video dom, we never expect the player to be initialized
-  await expect(
-    waitFor(() => expect(result.current.player).not.toEqual(null))
-  ).rejects.toThrow(Error);
-});
-
-test("useVideoJs initialization with rendering <Video/>", async () => {
-  const videoJsOptions = {
-    sources: [{ src: "http://example.com/oceans.mp4", controls: false }],
-  };
-  const { result, rerender } = renderHook((props) => useVideoJS(props), {
-    initialProps: videoJsOptions,
-  });
-  expect(result.current).toEqual({
-    Video: expect.any(Function),
-    player: null,
-    ready: false,
-  });
-  const Video = result.current.Video;
-  const { getByRole } = render(<Video />);
-  await waitFor(() => expect(result.current.player).not.toEqual(null));
-  expect(result.current).toEqual({
-    Video: expect.any(Function),
-    player: expect.any(Object),
-    ready: true,
-  });
-
-  const videoElement = getByRole("region", "Video Player").getElementsByTagName(
-    "video"
-  )[0];
-
-  expect(videoElement.getAttribute("src")).toEqual(
-    "http://example.com/oceans.mp4"
-  );
-
-  rerender({
-    sources: [{ src: "http://example.com/waves.mp4", controls: false }],
-  });
+  expect(getByTestId("ready").textContent).toBe("false");
+  expect(getByTestId("player").textContent).toBe("null");
 });
