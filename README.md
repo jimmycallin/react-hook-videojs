@@ -20,7 +20,7 @@ const App = () => {
   const className = "my-class";
   const { Video, player, ready } = useVideoJS(
     { sources: [{ src: videoUrl }] },
-    className // optional
+    className, // optional
   );
   if (ready) {
     // Do something with the video.js player object.

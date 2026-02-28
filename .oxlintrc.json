@@ -1,0 +1,8 @@
+{
+  "plugins": ["typescript", "react", "unicorn", "oxc"],
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", ".pnpm-store/**"]
+}
