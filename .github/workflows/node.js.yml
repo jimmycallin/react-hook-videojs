@@ -15,14 +15,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
       - name: Use Node.js from .nvmrc
         uses: actions/setup-node@v5
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.3
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build --if-present
       - run: pnpm test
@@ -30,12 +30,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
       - uses: actions/setup-node@v5
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.3
       - run: pnpm install --frozen-lockfile
       - run: pnpm run test:formatting
