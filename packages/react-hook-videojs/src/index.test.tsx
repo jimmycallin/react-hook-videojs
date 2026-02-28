@@ -7,16 +7,70 @@ type VideoJsOptions = {
   sources?: Array<{ src: string; type?: string }>;
   controls?: boolean;
   autoplay?: boolean;
+  muted?: boolean;
 };
 
 const createdObjectUrls: string[] = [];
 
-const createBlobVideoUrl = (): string => {
-  const videoBlob = new Blob([new Uint8Array([0, 0, 0, 0])], {
-    type: "video/mp4",
+const createFixtureVideoUrl = async (): Promise<string> => {
+  const mimeTypeCandidates = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+  ];
+  const mimeType = mimeTypeCandidates.find((candidate) =>
+    MediaRecorder.isTypeSupported(candidate),
+  );
+
+  if (!mimeType) {
+    throw new Error(
+      "No supported MediaRecorder video mime type in test browser",
+    );
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 2;
+  canvas.height = 2;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Could not create canvas context for video fixture");
+  }
+
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const stream = canvas.captureStream(15);
+  const recorder = new MediaRecorder(stream, { mimeType });
+  const chunks: BlobPart[] = [];
+
+  recorder.addEventListener("dataavailable", (event) => {
+    if (event.data.size > 0) {
+      chunks.push(event.data);
+    }
   });
+
+  const stopPromise = new Promise<void>((resolve) => {
+    recorder.addEventListener("stop", () => {
+      resolve();
+    });
+  });
+
+  recorder.start();
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 150);
+  });
+  recorder.stop();
+  await stopPromise;
+
+  stream.getTracks().forEach((track) => {
+    track.stop();
+  });
+
+  const videoBlob = new Blob(chunks, { type: mimeType });
   const objectUrl = URL.createObjectURL(videoBlob);
   createdObjectUrls.push(objectUrl);
+
   return objectUrl;
 };
 
@@ -49,9 +103,11 @@ afterEach(() => {
 });
 
 test("initializes in browser and attaches a playable media source", async () => {
-  const source = createBlobVideoUrl();
+  const source = await createFixtureVideoUrl();
   const { getByTestId, container } = render(
-    <HookHarness options={{ sources: [{ src: source, type: "video/mp4" }] }} />,
+    <HookHarness
+      options={{ sources: [{ src: source, type: "video/webm" }] }}
+    />,
   );
 
   await waitFor(() => expect(getByTestId("ready").textContent).toBe("true"));
@@ -67,10 +123,12 @@ test("initializes in browser and attaches a playable media source", async () => 
   });
 });
 
-test("attempts media loading in browser and surfaces native media error state", async () => {
-  const source = createBlobVideoUrl();
+test("loads local fixture media without native media error", async () => {
+  const source = await createFixtureVideoUrl();
   const { container } = render(
-    <HookHarness options={{ sources: [{ src: source, type: "video/mp4" }] }} />,
+    <HookHarness
+      options={{ sources: [{ src: source, type: "video/webm" }] }}
+    />,
   );
   const videoElement = container.querySelector("video");
   expect(videoElement).toBeTruthy();
@@ -78,17 +136,54 @@ test("attempts media loading in browser and surfaces native media error state", 
   await waitFor(() => {
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
     expect(currentSource).toContain("blob:");
-    expect(videoElement?.error).not.toBeNull();
+  });
+
+  await waitFor(() => {
+    expect(videoElement?.error).toBeNull();
+    expect(videoElement?.readyState ?? 0).toBeGreaterThan(0);
+  });
+});
+
+test("autoplay starts playback and advances media time", async () => {
+  const source = await createFixtureVideoUrl();
+
+  const { container } = render(
+    <HookHarness
+      options={{
+        autoplay: true,
+        muted: true,
+        sources: [{ src: source, type: "video/webm" }],
+      }}
+    />,
+  );
+
+  const videoElement = await waitFor(() => {
+    const element = container.querySelector("video");
+    expect(element).toBeTruthy();
+    return element as HTMLVideoElement;
+  });
+
+  await waitFor(() => {
+    const playerRoot = container.querySelector(".video-js");
+
+    expect(playerRoot?.classList.contains("vjs-playing")).toBe(true);
+    expect(playerRoot?.classList.contains("vjs-has-started")).toBe(true);
+    expect(videoElement?.paused).toBe(false);
+  });
+
+  await waitFor(() => {
+    expect(videoElement.readyState).toBeGreaterThan(1);
+    expect(videoElement.currentTime > 0 || videoElement.ended).toBe(true);
   });
 });
 
 test("reinitializes player and swaps the media source when options change", async () => {
-  const firstSource = createBlobVideoUrl();
-  const secondSource = createBlobVideoUrl();
+  const firstSource = await createFixtureVideoUrl();
+  const secondSource = await createFixtureVideoUrl();
 
   const { rerender, container } = render(
     <HookHarness
-      options={{ sources: [{ src: firstSource, type: "video/mp4" }] }}
+      options={{ sources: [{ src: firstSource, type: "video/webm" }] }}
     />,
   );
 
@@ -100,7 +195,7 @@ test("reinitializes player and swaps the media source when options change", asyn
 
   rerender(
     <HookHarness
-      options={{ sources: [{ src: secondSource, type: "video/mp4" }] }}
+      options={{ sources: [{ src: secondSource, type: "video/webm" }] }}
     />,
   );
 
@@ -112,11 +207,11 @@ test("reinitializes player and swaps the media source when options change", asyn
 });
 
 test("recovers when ref points to a detached video but container still has a connected video", async () => {
-  const firstSource = createBlobVideoUrl();
-  const secondSource = createBlobVideoUrl();
+  const firstSource = await createFixtureVideoUrl();
+  const secondSource = await createFixtureVideoUrl();
   const { rerender, container } = render(
     <HookHarness
-      options={{ sources: [{ src: firstSource, type: "video/mp4" }] }}
+      options={{ sources: [{ src: firstSource, type: "video/webm" }] }}
     />,
   );
 
@@ -138,7 +233,7 @@ test("recovers when ref points to a detached video but container still has a con
 
   rerender(
     <HookHarness
-      options={{ sources: [{ src: secondSource, type: "video/mp4" }] }}
+      options={{ sources: [{ src: secondSource, type: "video/webm" }] }}
     />,
   );
 
@@ -150,11 +245,11 @@ test("recovers when ref points to a detached video but container still has a con
 });
 
 test("skips initialization when the rendered video gets detached before effect runs", async () => {
-  const source = createBlobVideoUrl();
+  const source = await createFixtureVideoUrl();
 
   const DetachedBeforeEffectHarness = (): React.JSX.Element => {
     const { Video, ready, player } = useVideoJS({
-      sources: [{ src: source, type: "video/mp4" }],
+      sources: [{ src: source, type: "video/webm" }],
     });
 
     useLayoutEffect(() => {
@@ -179,7 +274,7 @@ test("skips initialization when the rendered video gets detached before effect r
 });
 
 test("does not initialize a player when Video is not rendered", async () => {
-  const source = createBlobVideoUrl();
+  const source = await createFixtureVideoUrl();
   const { getByTestId } = render(
     <HookHarness options={{ sources: [{ src: source }] }} mounted={false} />,
   );
