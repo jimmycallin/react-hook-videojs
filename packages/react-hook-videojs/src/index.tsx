@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import type { HTMLProps, MutableRefObject } from "react";
+import type { ComponentPropsWithRef, MutableRefObject, Ref } from "react";
 import videojsModule from "video.js";
 import type { VideoJsPlayer, VideoJsPlayerOptions } from "video.js";
 import cloneDeep from "lodash.clonedeep";
@@ -9,32 +9,97 @@ const videojs = videojsModule as unknown as (
   options?: VideoJsPlayerOptions,
 ) => VideoJsPlayer;
 
+const setVideoNodeRef = (
+  videoNode: MutableRefObject<HTMLVideoElement | null>,
+  videoRef: Ref<HTMLVideoElement> | undefined,
+  value: HTMLVideoElement | null,
+): void => {
+  videoNode.current = value;
+
+  if (!videoRef) {
+    return;
+  }
+
+  if (typeof videoRef === "function") {
+    videoRef(value);
+    return;
+  }
+
+  videoRef.current = value;
+};
+
+const getVideoClassName = (classNames: string, className?: string): string =>
+  ["video-js", classNames, className].filter(Boolean).join(" ");
+
 const restoreDisposedVideoNode = (
   containerNode: HTMLDivElement,
-  originalVideoNodeParent: Node | null | undefined,
+  originalVideoNode: HTMLVideoElement | null,
   videoNode: MutableRefObject<HTMLVideoElement | null>,
+  videoRef?: Ref<HTMLVideoElement>,
 ): void => {
-  if (originalVideoNodeParent && !containerNode.querySelector("video")) {
-    containerNode.appendChild(originalVideoNodeParent);
-    videoNode.current = containerNode.querySelector("video");
+  if (originalVideoNode && !containerNode.querySelector("video")) {
+    containerNode.appendChild(originalVideoNode);
+    setVideoNodeRef(
+      videoNode,
+      videoRef,
+      containerNode.querySelector("video") as HTMLVideoElement | null,
+    );
   }
 };
 
+const shouldSkipReadyCallback = (
+  disposed: boolean,
+  playerRef: MutableRefObject<VideoJsPlayer | null>,
+  initializedPlayer: VideoJsPlayer,
+): boolean => disposed || playerRef.current !== initializedPlayer;
+
+const getCurrentVideoNode = (
+  containerNode: HTMLDivElement,
+  videoNode: MutableRefObject<HTMLVideoElement | null>,
+): HTMLVideoElement | null => {
+  const connectedVideoNode = containerNode.querySelector(
+    "video",
+  ) as HTMLVideoElement | null;
+
+  return videoNode.current?.isConnected === true
+    ? videoNode.current
+    : connectedVideoNode;
+};
+
+const callOnReadyForCurrentPlayer = (
+  disposed: boolean,
+  playerRef: MutableRefObject<VideoJsPlayer | null>,
+  initializedPlayer: VideoJsPlayer,
+  onReady: (player: VideoJsPlayer) => void,
+): void => {
+  if (shouldSkipReadyCallback(disposed, playerRef, initializedPlayer)) {
+    return;
+  }
+
+  onReady(initializedPlayer);
+};
+
 export const __private__ = {
+  setVideoNodeRef,
+  getVideoClassName,
   restoreDisposedVideoNode,
+  shouldSkipReadyCallback,
+  callOnReadyForCurrentPlayer,
+  getCurrentVideoNode,
 };
 
 // Integrating React and video.js is a bit tricky, especially when supporting
-// React 18 strict mode. We'll do our best to explain what happens in inline comments.
+// React 19 strict mode. We'll do our best to explain what happens in inline comments.
+
+type VideoElementProps = ComponentPropsWithRef<"video">;
 
 type VideoJsWrapperProps = {
-  children: React.ReactNode;
   videoJsOptions: VideoJsPlayerOptions;
   onReady: (player: VideoJsPlayer) => void;
   onDispose: () => void;
   classNames: string;
   playerRef: MutableRefObject<VideoJsPlayer | null>;
-} & Partial<HTMLProps<HTMLVideoElement>>;
+} & VideoElementProps;
 
 const VideoJsWrapper = ({
   children,
@@ -43,6 +108,8 @@ const VideoJsWrapper = ({
   onDispose,
   classNames,
   playerRef,
+  ref: videoRef,
+  className,
   ...props
 }: VideoJsWrapperProps): React.JSX.Element => {
   const videoJsOptionsCloned = useMemo(
@@ -53,73 +120,78 @@ const VideoJsWrapper = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const containerNode = containerRef.current;
-    if (!containerNode) return;
+    const containerNode = containerRef.current as HTMLDivElement;
 
-    const connectedVideoNode = containerNode.querySelector(
-      "video",
-    ) as HTMLVideoElement | null;
-    const currentVideoNode =
-      videoNode.current?.isConnected === true
-        ? videoNode.current
-        : connectedVideoNode;
+    const currentVideoNode = getCurrentVideoNode(containerNode, videoNode);
 
     if (!currentVideoNode || !currentVideoNode.isConnected) return;
 
     if (videoNode.current !== currentVideoNode) {
-      videoNode.current = currentVideoNode;
+      setVideoNodeRef(videoNode, videoRef, currentVideoNode);
     }
 
-    const originalVideoNodeParent =
-      currentVideoNode.parentNode?.cloneNode(true);
+    const originalVideoNode = currentVideoNode.cloneNode(
+      true,
+    ) as HTMLVideoElement;
+
+    let disposed = false;
 
     const initializedPlayer = videojs(currentVideoNode, videoJsOptionsCloned);
     playerRef.current = initializedPlayer;
     initializedPlayer.ready(() => {
-      onReady(initializedPlayer);
+      callOnReadyForCurrentPlayer(
+        disposed,
+        playerRef,
+        initializedPlayer,
+        onReady,
+      );
     });
 
     return (): void => {
       // Whenever something changes in the options object, we
       // want to reinitialize video.js, and destroy the old player by calling `player.current.dispose()`
 
+      disposed = true;
       initializedPlayer.dispose();
       playerRef.current = null;
 
       restoreDisposedVideoNode(
         containerNode,
-        originalVideoNodeParent,
+        originalVideoNode,
         videoNode,
+        videoRef,
       );
 
       onDispose();
     };
 
     // Reinitialize only when deep-compared options or lifecycle handlers change.
-  }, [videoJsOptionsCloned, onReady, onDispose, playerRef]);
+  }, [videoJsOptionsCloned, onReady, onDispose, playerRef, videoRef]);
 
   return (
     <div ref={containerRef}>
-      <div data-vjs-player>
-        <video ref={videoNode} className={`video-js ${classNames}`} {...props}>
-          {children}
-        </video>
-      </div>
+      <video
+        ref={(value) => {
+          setVideoNodeRef(videoNode, videoRef, value);
+        }}
+        className={getVideoClassName(classNames, className)}
+        {...props}
+      >
+        {children}
+      </video>
     </div>
   );
 };
 
-type VideoProps = {
-  children?: React.ReactNode;
-} & Partial<HTMLProps<HTMLVideoElement>>;
+export type VideoProps = VideoElementProps;
 
-type VideoType = (props: VideoProps) => React.JSX.Element;
+export type VideoComponent = (props: VideoProps) => React.JSX.Element;
 
 export const useVideoJS = (
   videoJsOptions: VideoJsPlayerOptions,
   classNames = "",
 ): {
-  Video: VideoType;
+  Video: VideoComponent;
   ready: boolean;
   player: VideoJsPlayer | null;
 } => {

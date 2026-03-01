@@ -21,6 +21,12 @@ export default defineConfig({
       reporter: ["text", "html", "lcov"],
       include: ["packages/react-hook-videojs/src/**/*.ts?(x)"],
       exclude: ["packages/react-hook-videojs/src/**/*.test.ts?(x)"],
+      thresholds: {
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
+      },
     },
   },
 });

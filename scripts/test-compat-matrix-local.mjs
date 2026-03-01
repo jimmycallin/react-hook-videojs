@@ -4,8 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const combinations = [
-  { react: "18", videojs: "7" },
-  { react: "18", videojs: "8" },
   { react: "19", videojs: "7" },
   { react: "19", videojs: "8" },
 ];

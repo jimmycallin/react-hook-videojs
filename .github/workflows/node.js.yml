@@ -17,7 +17,8 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
+  main-checks:
+    name: Main Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -35,16 +36,16 @@ jobs:
       - run: pnpm -r --if-present run build
       - run: pnpm test
 
-  compatibility-matrix:
+  compatibility-tests:
+    name: Compatibility Tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
-        react: ["18", "19"]
         videojs: ["7", "8"]
 
-    name: React ${{ matrix.react }} / Video.js ${{ matrix.videojs }}
+    name: React 19 / Video.js ${{ matrix.videojs }}
 
     steps:
       - uses: actions/checkout@v5
@@ -57,7 +58,9 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "pnpm"
       - run: pnpm install --prefer-offline --no-frozen-lockfile
+      - name: Pin React 19
+        run: pnpm -w add -D --ignore-scripts react@19 react-dom@19 && pnpm --filter react-hook-videojs add -D --ignore-scripts react@19 react-dom@19
       - name: Pin package compatibility versions
-        run: pnpm -w add -D --ignore-scripts react@${{ matrix.react }} react-dom@${{ matrix.react }} && pnpm --filter react-hook-videojs add -D --ignore-scripts react@${{ matrix.react }} react-dom@${{ matrix.react }} video.js@${{ matrix.videojs }}
+        run: pnpm --filter react-hook-videojs add -D --ignore-scripts video.js@${{ matrix.videojs }}
       - run: pnpm exec playwright install chromium
       - run: pnpm run test:unit

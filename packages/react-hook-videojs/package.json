@@ -27,8 +27,8 @@
     "dev": "vite build --watch"
   },
   "peerDependencies": {
-    "react": ">=18 < 20",
-    "react-dom": ">=18 < 20",
+    "react": ">=19 < 20",
+    "react-dom": ">=19 < 20",
     "video.js": ">=7 <9"
   },
   "devDependencies": {
