@@ -1,33 +1,29 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import pkg from "./package.json";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const external = [
   ...Object.keys(pkg.dependencies),
   ...Object.keys(pkg.peerDependencies),
 ];
 
-const globals = external.reduce((acc, name) => {
-  acc[name] = name;
-  return acc;
-}, {});
-
 export default defineConfig({
   plugins: [react()],
   build: {
     minify: false,
     lib: {
-      entry: path.resolve(__dirname, "src/index.tsx"),
+      entry: resolve(__dirname, "src/index.tsx"),
       name: "react-hook-videojs",
-      fileName: (format) => `react-hook-videojs.${format}.js`,
+      formats: ["es"],
+      fileName: () => "react-hook-videojs.es.js",
     },
     sourcemap: true,
     rollupOptions: {
       external,
-      output: {
-        globals,
-      },
     },
   },
   test: {
