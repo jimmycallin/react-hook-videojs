@@ -20,8 +20,43 @@ const restoreDisposedVideoNode = (
   }
 };
 
+const shouldSkipReadyCallback = (
+  disposed: boolean,
+  playerRef: MutableRefObject<VideoJsPlayer | null>,
+  initializedPlayer: VideoJsPlayer,
+): boolean => disposed || playerRef.current !== initializedPlayer;
+
+const getCurrentVideoNode = (
+  containerNode: HTMLDivElement,
+  videoNode: MutableRefObject<HTMLVideoElement | null>,
+): HTMLVideoElement | null => {
+  const connectedVideoNode = containerNode.querySelector(
+    "video",
+  ) as HTMLVideoElement | null;
+
+  return videoNode.current?.isConnected === true
+    ? videoNode.current
+    : connectedVideoNode;
+};
+
+const callOnReadyForCurrentPlayer = (
+  disposed: boolean,
+  playerRef: MutableRefObject<VideoJsPlayer | null>,
+  initializedPlayer: VideoJsPlayer,
+  onReady: (player: VideoJsPlayer) => void,
+): void => {
+  if (shouldSkipReadyCallback(disposed, playerRef, initializedPlayer)) {
+    return;
+  }
+
+  onReady(initializedPlayer);
+};
+
 export const __private__ = {
   restoreDisposedVideoNode,
+  shouldSkipReadyCallback,
+  callOnReadyForCurrentPlayer,
+  getCurrentVideoNode,
 };
 
 // Integrating React and video.js is a bit tricky, especially when supporting
@@ -53,16 +88,9 @@ const VideoJsWrapper = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const containerNode = containerRef.current;
-    if (!containerNode) return;
+    const containerNode = containerRef.current as HTMLDivElement;
 
-    const connectedVideoNode = containerNode.querySelector(
-      "video",
-    ) as HTMLVideoElement | null;
-    const currentVideoNode =
-      videoNode.current?.isConnected === true
-        ? videoNode.current
-        : connectedVideoNode;
+    const currentVideoNode = getCurrentVideoNode(containerNode, videoNode);
 
     if (!currentVideoNode || !currentVideoNode.isConnected) return;
 
@@ -73,16 +101,24 @@ const VideoJsWrapper = ({
     const originalVideoNodeParent =
       currentVideoNode.parentNode?.cloneNode(true);
 
+    let disposed = false;
+
     const initializedPlayer = videojs(currentVideoNode, videoJsOptionsCloned);
     playerRef.current = initializedPlayer;
     initializedPlayer.ready(() => {
-      onReady(initializedPlayer);
+      callOnReadyForCurrentPlayer(
+        disposed,
+        playerRef,
+        initializedPlayer,
+        onReady,
+      );
     });
 
     return (): void => {
       // Whenever something changes in the options object, we
       // want to reinitialize video.js, and destroy the old player by calling `player.current.dispose()`
 
+      disposed = true;
       initializedPlayer.dispose();
       playerRef.current = null;
 
