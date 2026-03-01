@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import "./App.css";
 import sample from "./sample.vtt?url";
 import "video.js/dist/video-js.css";
@@ -11,11 +11,14 @@ const App = () => {
   const [autoplay, setAutoplay] = useState(false);
   const [isMount, setIsMount] = useState(true);
 
-  const videoJsOptions = {
-    sources: [{ src: source }],
-    controls,
-    autoplay,
-  };
+  const videoJsOptions = useMemo(
+    () => ({
+      sources: [{ src: source }],
+      controls,
+      autoplay,
+    }),
+    [source, controls, autoplay],
+  );
   const className = "my-class";
   const { Video, ready, player } = useVideoJS(videoJsOptions, className);
   console.log({ Video, ready, player });

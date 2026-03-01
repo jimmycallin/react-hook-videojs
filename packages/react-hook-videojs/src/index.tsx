@@ -1,14 +1,14 @@
-import React, {
+import {
   useRef,
   useState,
   useEffect,
   useCallback,
   forwardRef,
+  useMemo,
 } from "react";
 import type { HTMLProps, MutableRefObject } from "react";
 import videojsModule from "video.js";
 import cloneDeep from "lodash.clonedeep";
-import { dequal } from "dequal";
 
 type VideoJsPlayer = any;
 type VideoJsPlayerOptions = any;
@@ -18,18 +18,6 @@ const videojs = videojsModule as unknown as (
   options?: VideoJsPlayerOptions,
 ) => VideoJsPlayer;
 
-// Function copied from
-// https://github.com/kentcdodds/use-deep-compare-effect/blob/main/src/index.ts
-function useDeepCompareMemoize<T>(value: T): T {
-  const ref = React.useRef<T>(value);
-
-  if (!dequal(value, ref.current)) {
-    ref.current = value;
-  }
-
-  return ref.current;
-}
-
 // Integrating React and video.js is a bit tricky, especially when supporting
 // React 18 strict mode. We'll do our best to explain what happens in inline comments.
 
@@ -38,7 +26,7 @@ const VideoJsWrapper = forwardRef<
   {
     children: React.ReactNode;
     videoJsOptions: VideoJsPlayerOptions;
-    onReady: () => void;
+    onReady: (player: VideoJsPlayer) => void;
     onDispose: () => void;
     classNames: string;
   }
@@ -47,13 +35,12 @@ const VideoJsWrapper = forwardRef<
     { children, videoJsOptions, onReady, onDispose, classNames, ...props },
     playerRef,
   ) => {
-    const memoizedVideoJsOptions = useDeepCompareMemoize(videoJsOptions);
     const player = playerRef as MutableRefObject<VideoJsPlayer | null>;
     // video.js sometimes mutates the provided options object.
     // We clone it to avoid mutation issues.
-    const videoJsOptionsCloned = React.useMemo(
-      () => cloneDeep(memoizedVideoJsOptions),
-      [memoizedVideoJsOptions],
+    const videoJsOptionsCloned = useMemo(
+      () => cloneDeep(videoJsOptions),
+      [videoJsOptions],
     );
     const videoNode = useRef<HTMLVideoElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -86,7 +73,11 @@ const VideoJsWrapper = forwardRef<
       /* v8 ignore next -- player is reset during cleanup before this effect re-runs */
       if (!player.current) {
         player.current = videojs(currentVideoNode, videoJsOptionsCloned);
-        player.current.ready(onReady);
+        player.current.ready(() => {
+          if (player.current) {
+            onReady(player.current);
+          }
+        });
       }
 
       return (): void => {
@@ -153,28 +144,34 @@ export const useVideoJS = (
   ready: boolean;
   player: VideoJsPlayer | null;
 } => {
-  const memoizedVideoJsOptions = useDeepCompareMemoize(videoJsOptions);
   const [ready, setReady] = useState(false);
+  const [player, setPlayer] = useState<VideoJsPlayer | null>(null);
 
   // player will contain the video.js player object, once it is ready.
-  const player = useRef<VideoJsPlayer>(null);
-  const onReady = useCallback((): void => setReady(true), []);
-  const onDispose = useCallback((): void => setReady(false), []);
+  const playerRef = useRef<VideoJsPlayer>(null);
+  const onReady = useCallback((playerInstance: VideoJsPlayer): void => {
+    setReady(true);
+    setPlayer(playerInstance);
+  }, []);
+  const onDispose = useCallback((): void => {
+    setReady(false);
+    setPlayer(null);
+  }, []);
   const Video = useCallback(
     ({ children, ...props }: VideoProps) => (
       <VideoJsWrapper
-        videoJsOptions={memoizedVideoJsOptions}
+        videoJsOptions={videoJsOptions}
         classNames={classNames}
         onReady={onReady}
         onDispose={onDispose}
         {...props}
-        ref={player}
+        ref={playerRef}
       >
         {children}
       </VideoJsWrapper>
     ),
-    [memoizedVideoJsOptions, classNames, onReady, onDispose],
+    [videoJsOptions, classNames, onReady, onDispose],
   );
 
-  return { Video, ready, player: player.current };
+  return { Video, ready, player };
 };
