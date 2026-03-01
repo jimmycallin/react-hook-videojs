@@ -1,9 +1,4 @@
-import {
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import type { HTMLProps, MutableRefObject } from "react";
 import videojsModule from "video.js";
 import type { VideoJsPlayer, VideoJsPlayerOptions } from "video.js";
@@ -46,9 +41,10 @@ const deepEqual = (left: unknown, right: unknown): boolean => {
 
     if (leftKeys.length !== rightKeys.length) return false;
 
-    return leftKeys.every((key) =>
-      Object.prototype.hasOwnProperty.call(right, key) &&
-      deepEqual(left[key], right[key]),
+    return leftKeys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(right, key) &&
+        deepEqual(left[key], right[key]),
     );
   }
 
@@ -76,82 +72,78 @@ const VideoJsWrapper = ({
   playerRef,
   ...props
 }: VideoJsWrapperProps): React.JSX.Element => {
-    // video.js sometimes mutates the provided options object.
-    // Keep one immutable snapshot for deep-comparison and one clone for video.js init.
-    const stableOptionsSnapshotRef = useRef<VideoJsPlayerOptions | null>(null);
-    const stableOptionsForInitRef = useRef<VideoJsPlayerOptions | null>(null);
-    if (
-      stableOptionsSnapshotRef.current === null ||
-      !deepEqual(stableOptionsSnapshotRef.current, videoJsOptions)
-    ) {
-      stableOptionsSnapshotRef.current = cloneDeep(videoJsOptions);
-      stableOptionsForInitRef.current = cloneDeep(videoJsOptions);
+  // video.js sometimes mutates the provided options object.
+  // Keep one immutable snapshot for deep-comparison and one clone for video.js init.
+  const stableOptionsSnapshotRef = useRef<VideoJsPlayerOptions | null>(null);
+  const stableOptionsForInitRef = useRef<VideoJsPlayerOptions | null>(null);
+  if (
+    stableOptionsSnapshotRef.current === null ||
+    !deepEqual(stableOptionsSnapshotRef.current, videoJsOptions)
+  ) {
+    stableOptionsSnapshotRef.current = cloneDeep(videoJsOptions);
+    stableOptionsForInitRef.current = cloneDeep(videoJsOptions);
+  }
+
+  const videoJsOptionsCloned =
+    stableOptionsForInitRef.current ?? cloneDeep(videoJsOptions);
+  const videoNode = useRef<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const containerNode = containerRef.current;
+    if (!containerNode) return;
+
+    const connectedVideoNode = containerNode.querySelector(
+      "video",
+    ) as HTMLVideoElement | null;
+    const currentVideoNode =
+      videoNode.current?.isConnected === true
+        ? videoNode.current
+        : connectedVideoNode;
+
+    if (!currentVideoNode || !currentVideoNode.isConnected) return;
+
+    if (videoNode.current !== currentVideoNode) {
+      videoNode.current = currentVideoNode;
     }
 
-    const videoJsOptionsCloned =
-      stableOptionsForInitRef.current ?? cloneDeep(videoJsOptions);
-    const videoNode = useRef<HTMLVideoElement | null>(null);
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const originalVideoNodeParent =
+      currentVideoNode.parentNode?.cloneNode(true);
 
-    useEffect(() => {
-      const containerNode = containerRef.current;
-      if (!containerNode) return;
+    const initializedPlayer = videojs(currentVideoNode, videoJsOptionsCloned);
+    playerRef.current = initializedPlayer;
+    initializedPlayer.ready(() => {
+      onReady(initializedPlayer);
+    });
 
-      const connectedVideoNode = containerNode.querySelector(
-        "video",
-      ) as HTMLVideoElement | null;
-      const currentVideoNode =
-        videoNode.current?.isConnected === true
-          ? videoNode.current
-          : connectedVideoNode;
+    return (): void => {
+      // Whenever something changes in the options object, we
+      // want to reinitialize video.js, and destroy the old player by calling `player.current.dispose()`
 
-      if (!currentVideoNode || !currentVideoNode.isConnected) return;
+      initializedPlayer.dispose();
+      playerRef.current = null;
 
-      if (videoNode.current !== currentVideoNode) {
-        videoNode.current = currentVideoNode;
-      }
+      restoreDisposedVideoNode(
+        containerNode,
+        originalVideoNodeParent,
+        videoNode,
+      );
 
-      const originalVideoNodeParent =
-        currentVideoNode.parentNode?.cloneNode(true);
+      onDispose();
+    };
 
-      const initializedPlayer = videojs(currentVideoNode, videoJsOptionsCloned);
-      playerRef.current = initializedPlayer;
-      initializedPlayer.ready(() => {
-        onReady(initializedPlayer);
-      });
+    // Reinitialize only when deep-compared options or lifecycle handlers change.
+  }, [videoJsOptionsCloned, onReady, onDispose, playerRef]);
 
-      return (): void => {
-        // Whenever something changes in the options object, we
-        // want to reinitialize video.js, and destroy the old player by calling `player.current.dispose()`
-
-        initializedPlayer.dispose();
-        playerRef.current = null;
-
-        restoreDisposedVideoNode(
-          containerNode,
-          originalVideoNodeParent,
-          videoNode,
-        );
-
-        onDispose();
-      };
-
-      // Reinitialize only when deep-compared options or lifecycle handlers change.
-    }, [videoJsOptionsCloned, onReady, onDispose, playerRef]);
-
-    return (
-      <div ref={containerRef}>
-        <div data-vjs-player>
-          <video
-            ref={videoNode}
-            className={`video-js ${classNames}`}
-            {...props}
-          >
-            {children}
-          </video>
-        </div>
+  return (
+    <div ref={containerRef}>
+      <div data-vjs-player>
+        <video ref={videoNode} className={`video-js ${classNames}`} {...props}>
+          {children}
+        </video>
       </div>
-    );
+    </div>
+  );
 };
 
 type VideoProps = {
