@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import type { HTMLProps, MutableRefObject } from "react";
+import type { ComponentPropsWithRef, MutableRefObject, Ref } from "react";
 import videojsModule from "video.js";
 import type { VideoJsPlayer, VideoJsPlayerOptions } from "video.js";
 import cloneDeep from "lodash.clonedeep";
@@ -9,14 +9,41 @@ const videojs = videojsModule as unknown as (
   options?: VideoJsPlayerOptions,
 ) => VideoJsPlayer;
 
+const setVideoNodeRef = (
+  videoNode: MutableRefObject<HTMLVideoElement | null>,
+  videoRef: Ref<HTMLVideoElement> | undefined,
+  value: HTMLVideoElement | null,
+): void => {
+  videoNode.current = value;
+
+  if (!videoRef) {
+    return;
+  }
+
+  if (typeof videoRef === "function") {
+    videoRef(value);
+    return;
+  }
+
+  videoRef.current = value;
+};
+
+const getVideoClassName = (classNames: string, className?: string): string =>
+  ["video-js", classNames, className].filter(Boolean).join(" ");
+
 const restoreDisposedVideoNode = (
   containerNode: HTMLDivElement,
   originalVideoNodeParent: Node | null | undefined,
   videoNode: MutableRefObject<HTMLVideoElement | null>,
+  videoRef?: Ref<HTMLVideoElement>,
 ): void => {
   if (originalVideoNodeParent && !containerNode.querySelector("video")) {
     containerNode.appendChild(originalVideoNodeParent);
-    videoNode.current = containerNode.querySelector("video");
+    setVideoNodeRef(
+      videoNode,
+      videoRef,
+      containerNode.querySelector("video") as HTMLVideoElement | null,
+    );
   }
 };
 
@@ -53,6 +80,8 @@ const callOnReadyForCurrentPlayer = (
 };
 
 export const __private__ = {
+  setVideoNodeRef,
+  getVideoClassName,
   restoreDisposedVideoNode,
   shouldSkipReadyCallback,
   callOnReadyForCurrentPlayer,
@@ -60,16 +89,17 @@ export const __private__ = {
 };
 
 // Integrating React and video.js is a bit tricky, especially when supporting
-// React 18 strict mode. We'll do our best to explain what happens in inline comments.
+// React 19 strict mode. We'll do our best to explain what happens in inline comments.
+
+type VideoElementProps = ComponentPropsWithRef<"video">;
 
 type VideoJsWrapperProps = {
-  children: React.ReactNode;
   videoJsOptions: VideoJsPlayerOptions;
   onReady: (player: VideoJsPlayer) => void;
   onDispose: () => void;
   classNames: string;
   playerRef: MutableRefObject<VideoJsPlayer | null>;
-} & Partial<HTMLProps<HTMLVideoElement>>;
+} & VideoElementProps;
 
 const VideoJsWrapper = ({
   children,
@@ -78,6 +108,8 @@ const VideoJsWrapper = ({
   onDispose,
   classNames,
   playerRef,
+  ref: videoRef,
+  className,
   ...props
 }: VideoJsWrapperProps): React.JSX.Element => {
   const videoJsOptionsCloned = useMemo(
@@ -126,18 +158,25 @@ const VideoJsWrapper = ({
         containerNode,
         originalVideoNodeParent,
         videoNode,
+        videoRef,
       );
 
       onDispose();
     };
 
     // Reinitialize only when deep-compared options or lifecycle handlers change.
-  }, [videoJsOptionsCloned, onReady, onDispose, playerRef]);
+  }, [videoJsOptionsCloned, onReady, onDispose, playerRef, videoRef]);
 
   return (
     <div ref={containerRef}>
       <div data-vjs-player>
-        <video ref={videoNode} className={`video-js ${classNames}`} {...props}>
+        <video
+          ref={(value) => {
+            setVideoNodeRef(videoNode, videoRef, value);
+          }}
+          className={getVideoClassName(classNames, className)}
+          {...props}
+        >
           {children}
         </video>
       </div>
@@ -145,9 +184,7 @@ const VideoJsWrapper = ({
   );
 };
 
-type VideoProps = {
-  children?: React.ReactNode;
-} & Partial<HTMLProps<HTMLVideoElement>>;
+type VideoProps = VideoElementProps;
 
 type VideoType = (props: VideoProps) => React.JSX.Element;
 

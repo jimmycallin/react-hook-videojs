@@ -385,6 +385,34 @@ test("does not initialize a player when Video is not rendered", async () => {
   expect(getByTestId("player").textContent).toBe("null");
 });
 
+test("supports ref prop on Video component", async () => {
+  const source = await createFixtureVideoUrl();
+
+  const RefHarness = (): React.JSX.Element => {
+    const [hasRef, setHasRef] = useState(false);
+    const { Video } = useVideoJS({
+      sources: [{ src: source, type: "video/webm" }],
+    });
+
+    return (
+      <div>
+        <span data-testid="has-ref">{hasRef ? "true" : "false"}</span>
+        <Video
+          ref={(element) => {
+            setHasRef(Boolean(element));
+          }}
+        />
+      </div>
+    );
+  };
+
+  const { getByTestId } = render(<RefHarness />);
+
+  await waitFor(() => {
+    expect(getByTestId("has-ref").textContent).toBe("true");
+  });
+});
+
 test("handles mount/unmount churn and restores player state when remounted", async () => {
   const source = await createFixtureVideoUrl();
   const { getByTestId, rerender } = render(
@@ -570,4 +598,51 @@ test("falls back to container video node when ref video is detached", () => {
   );
 
   containerNode.remove();
+});
+
+test("builds merged video className", () => {
+  expect(__private__.getVideoClassName("hook-class", "prop-class")).toBe(
+    "video-js hook-class prop-class",
+  );
+  expect(__private__.getVideoClassName("", undefined)).toBe("video-js");
+});
+
+test("updates internal and callback refs for video node", () => {
+  const videoNode = {
+    current: null,
+  } as React.MutableRefObject<HTMLVideoElement | null>;
+  const callbackRef = vi.fn();
+  const element = document.createElement("video");
+
+  __private__.setVideoNodeRef(videoNode, callbackRef, element);
+
+  expect(videoNode.current).toBe(element);
+  expect(callbackRef).toHaveBeenCalledTimes(1);
+  expect(callbackRef).toHaveBeenCalledWith(element);
+});
+
+test("updates internal and object refs for video node", () => {
+  const videoNode = {
+    current: null,
+  } as React.MutableRefObject<HTMLVideoElement | null>;
+  const objectRef = {
+    current: null,
+  } as React.MutableRefObject<HTMLVideoElement | null>;
+  const element = document.createElement("video");
+
+  __private__.setVideoNodeRef(videoNode, objectRef, element);
+
+  expect(videoNode.current).toBe(element);
+  expect(objectRef.current).toBe(element);
+});
+
+test("updates internal ref when external ref is missing", () => {
+  const videoNode = {
+    current: null,
+  } as React.MutableRefObject<HTMLVideoElement | null>;
+  const element = document.createElement("video");
+
+  __private__.setVideoNodeRef(videoNode, undefined, element);
+
+  expect(videoNode.current).toBe(element);
 });
