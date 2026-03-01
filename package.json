@@ -9,7 +9,7 @@
     "test:lint": "oxlint .",
     "test:typecheck": "pnpm --filter react-hook-videojs exec tsc -b ../../tsconfig.json",
     "test:unit": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --config vitest.coverage.config.ts",
     "dev": "pnpm -r --parallel --filter example --filter react-hook-videojs run dev",
     "publish": "pnpm --filter react-hook-videojs publish"
   },

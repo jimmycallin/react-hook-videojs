@@ -37,15 +37,13 @@ jobs:
       - run: pnpm test
 
   compatibility-tests:
-    name: Compatibility Tests
+    name: React 19 / Video.js ${{ matrix.videojs }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
         videojs: ["7", "8"]
-
-    name: React 19 / Video.js ${{ matrix.videojs }}
 
     steps:
       - uses: actions/checkout@v5
