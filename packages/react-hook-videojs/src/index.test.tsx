@@ -555,3 +555,74 @@ test("updates internal ref when external ref is missing", () => {
 
   expect(videoNode.current).toBe(element);
 });
+
+test("forwards html attributes to the video element", () => {
+  const AttrHarness = (): React.JSX.Element => {
+    const { Video } = useVideoJS({ sources: [] });
+    return <Video data-testid="my-video" aria-label="test player" />;
+  };
+  const { container } = render(<AttrHarness />);
+  const video = container.querySelector("video");
+  expect(video?.getAttribute("data-testid")).toBe("my-video");
+  expect(video?.getAttribute("aria-label")).toBe("test player");
+});
+
+test("forwards playsInline to the video element", () => {
+  const AttrHarness = (): React.JSX.Element => {
+    const { Video } = useVideoJS({ sources: [] });
+    return <Video playsInline />;
+  };
+  const { container } = render(<AttrHarness />);
+  expect(container.querySelector("video")?.hasAttribute("playsinline")).toBe(
+    true,
+  );
+});
+
+test("merges hook classNames with Video className prop", () => {
+  const AttrHarness = (): React.JSX.Element => {
+    const { Video } = useVideoJS({ sources: [] }, "hook-class");
+    return <Video className="user-class" />;
+  };
+  const { container } = render(<AttrHarness />);
+  // After Video.js initialises, it takes the <video> element and uses it as the
+  // player root — adding its own vjs-* classes while keeping ours.  The native
+  // <video> gets class="vjs-tech", so we query the player root (.video-js) instead.
+  const playerEl = container.querySelector(".video-js");
+  expect(playerEl?.classList.contains("video-js")).toBe(true);
+  expect(playerEl?.classList.contains("hook-class")).toBe(true);
+  expect(playerEl?.classList.contains("user-class")).toBe(true);
+});
+
+test("track children are registered as video.js text tracks", async () => {
+  const TrackHarness = (): React.JSX.Element => {
+    const { Video, player } = useVideoJS({ sources: [] });
+    // Video.js reads <track> elements during init and removes them from the DOM.
+    // They are accessible via the remoteTextTracks() API.
+    const remoteTracks = player ? player.remoteTextTracks() : null;
+    const kinds = remoteTracks
+      ? [remoteTracks[0]?.kind ?? "", remoteTracks[1]?.kind ?? ""].join(",")
+      : "";
+    return (
+      <div>
+        <span data-testid="track-kinds">{kinds}</span>
+        <Video>
+          <track
+            kind="captions"
+            src="/captions.vtt"
+            srcLang="en"
+            label="English"
+          />
+          <track kind="subtitles" src="/subs.vtt" srcLang="fr" label="French" />
+        </Video>
+      </div>
+    );
+  };
+
+  const { getByTestId } = render(<TrackHarness />);
+
+  await waitFor(() => {
+    const kinds = getByTestId("track-kinds").textContent ?? "";
+    expect(kinds).toContain("captions");
+    expect(kinds).toContain("subtitles");
+  });
+});
