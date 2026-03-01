@@ -4,6 +4,7 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "test": "pnpm run test:formatting && pnpm run test:lint && pnpm run test:typecheck && pnpm run test:unit",
+    "test:matrix:local": "node ./scripts/test-compat-matrix-local.mjs",
     "test:formatting": "oxfmt --check .",
     "test:lint": "oxlint .",
     "test:typecheck": "pnpm --filter react-hook-videojs exec tsc -b ../../tsconfig.json",
