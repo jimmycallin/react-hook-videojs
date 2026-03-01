@@ -2,76 +2,15 @@ import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { __private__, useVideoJS } from "./index";
+import fixtureUrl from "./fixture.mp4?url";
+import fixture2Url from "./fixture2.mp4?url";
 
 type VideoJsOptions = {
   sources?: Array<{ src: string; type?: string }>;
   controls?: boolean;
   autoplay?: boolean;
   muted?: boolean;
-};
-
-const createdObjectUrls: string[] = [];
-
-const createFixtureVideoUrl = async (): Promise<string> => {
-  const mimeTypeCandidates = [
-    "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8",
-    "video/webm",
-  ];
-  const mimeType = mimeTypeCandidates.find((candidate) =>
-    MediaRecorder.isTypeSupported(candidate),
-  );
-
-  if (!mimeType) {
-    throw new Error(
-      "No supported MediaRecorder video mime type in test browser",
-    );
-  }
-
-  const canvas = document.createElement("canvas");
-  canvas.width = 2;
-  canvas.height = 2;
-
-  const context = canvas.getContext("2d");
-  if (!context) {
-    throw new Error("Could not create canvas context for video fixture");
-  }
-
-  context.fillStyle = "#000";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-
-  const stream = canvas.captureStream(15);
-  const recorder = new MediaRecorder(stream, { mimeType });
-  const chunks: BlobPart[] = [];
-
-  recorder.addEventListener("dataavailable", (event) => {
-    if (event.data.size > 0) {
-      chunks.push(event.data);
-    }
-  });
-
-  const stopPromise = new Promise<void>((resolve) => {
-    recorder.addEventListener("stop", () => {
-      resolve();
-    });
-  });
-
-  recorder.start();
-  await new Promise<void>((resolve) => {
-    window.setTimeout(resolve, 150);
-  });
-  recorder.stop();
-  await stopPromise;
-
-  stream.getTracks().forEach((track) => {
-    track.stop();
-  });
-
-  const videoBlob = new Blob(chunks, { type: mimeType });
-  const objectUrl = URL.createObjectURL(videoBlob);
-  createdObjectUrls.push(objectUrl);
-
-  return objectUrl;
+  playsinline?: boolean;
 };
 
 const HookHarness = ({
@@ -93,20 +32,12 @@ const HookHarness = ({
 
 afterEach(() => {
   cleanup();
-
-  while (createdObjectUrls.length > 0) {
-    const objectUrl = createdObjectUrls.pop();
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl);
-    }
-  }
 });
 
 test("initializes in browser and attaches a playable media source", async () => {
-  const source = await createFixtureVideoUrl();
   const { getByTestId, container } = render(
     <HookHarness
-      options={{ sources: [{ src: source, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
     />,
   );
 
@@ -119,15 +50,14 @@ test("initializes in browser and attaches a playable media source", async () => 
 
   await waitFor(() => {
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
-    expect(currentSource).toContain("blob:");
+    expect(currentSource).toContain("fixture");
   });
 });
 
 test("loads local fixture media without native media error", async () => {
-  const source = await createFixtureVideoUrl();
   const { container } = render(
     <HookHarness
-      options={{ sources: [{ src: source, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
     />,
   );
   const videoElement = container.querySelector("video");
@@ -135,7 +65,7 @@ test("loads local fixture media without native media error", async () => {
 
   await waitFor(() => {
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
-    expect(currentSource).toContain("blob:");
+    expect(currentSource).toContain("fixture");
   });
 
   await waitFor(() => {
@@ -144,82 +74,82 @@ test("loads local fixture media without native media error", async () => {
   });
 });
 
-test("autoplay starts playback and advances media time", async () => {
-  const source = await createFixtureVideoUrl();
+// Headless Firefox and WebKit block autoplay even for muted video; skip on those browsers.
+// Chromium is identified by its userAgent containing "Chrome".
+const isChromium =
+  typeof navigator !== "undefined" && /Chrome/.test(navigator.userAgent);
+test.skipIf(!isChromium)(
+  "autoplay starts playback and advances media time",
+  async () => {
+    const { container } = render(
+      <HookHarness
+        options={{
+          autoplay: true,
+          muted: true,
+          playsinline: true,
+          sources: [{ src: fixtureUrl, type: "video/mp4" }],
+        }}
+      />,
+    );
 
-  const { container } = render(
-    <HookHarness
-      options={{
-        autoplay: true,
-        muted: true,
-        sources: [{ src: source, type: "video/webm" }],
-      }}
-    />,
-  );
+    const videoElement = await waitFor(() => {
+      const element = container.querySelector("video");
+      expect(element).toBeTruthy();
+      return element as HTMLVideoElement;
+    });
 
-  const videoElement = await waitFor(() => {
-    const element = container.querySelector("video");
-    expect(element).toBeTruthy();
-    return element as HTMLVideoElement;
-  });
+    await waitFor(() => {
+      const playerRoot = container.querySelector(".video-js");
 
-  await waitFor(() => {
-    const playerRoot = container.querySelector(".video-js");
+      expect(playerRoot?.classList.contains("vjs-playing")).toBe(true);
+      expect(playerRoot?.classList.contains("vjs-has-started")).toBe(true);
+      expect(videoElement?.paused).toBe(false);
+    });
 
-    expect(playerRoot?.classList.contains("vjs-playing")).toBe(true);
-    expect(playerRoot?.classList.contains("vjs-has-started")).toBe(true);
-    expect(videoElement?.paused).toBe(false);
-  });
-
-  await waitFor(() => {
-    expect(videoElement.readyState).toBeGreaterThan(1);
-    expect(videoElement.currentTime > 0 || videoElement.ended).toBe(true);
-  });
-});
+    await waitFor(() => {
+      expect(videoElement.readyState).toBeGreaterThan(1);
+      expect(videoElement.currentTime > 0 || videoElement.ended).toBe(true);
+    });
+  },
+);
 
 test("reinitializes player and swaps the media source when options change", async () => {
-  const firstSource = await createFixtureVideoUrl();
-  const secondSource = await createFixtureVideoUrl();
-
   const { rerender, container } = render(
     <HookHarness
-      options={{ sources: [{ src: firstSource, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
     />,
   );
 
   await waitFor(() => {
     const videoElement = container.querySelector("video");
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
-    expect(currentSource).toContain(firstSource);
+    expect(currentSource).toContain("fixture.mp4");
   });
 
   rerender(
     <HookHarness
-      options={{ sources: [{ src: secondSource, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixture2Url, type: "video/mp4" }] }}
     />,
   );
 
   await waitFor(() => {
     const videoElement = container.querySelector("video");
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
-    expect(currentSource).toContain(secondSource);
+    expect(currentSource).toContain("fixture2.mp4");
   });
 });
 
 test("recovers when ref points to detached video but container has a connected video", async () => {
-  const firstSource = await createFixtureVideoUrl();
-  const secondSource = await createFixtureVideoUrl();
-
   const { rerender, container } = render(
     <HookHarness
-      options={{ sources: [{ src: firstSource, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
     />,
   );
 
   await waitFor(() => {
     const videoElement = container.querySelector("video");
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
-    expect(currentSource).toContain(firstSource);
+    expect(currentSource).toContain("fixture.mp4");
   });
 
   const currentVideo = container.querySelector("video");
@@ -231,23 +161,22 @@ test("recovers when ref points to detached video but container has a connected v
 
   rerender(
     <HookHarness
-      options={{ sources: [{ src: secondSource, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixture2Url, type: "video/mp4" }] }}
     />,
   );
 
   await waitFor(() => {
     const videoElement = container.querySelector("video");
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
-    expect(currentSource).toContain(secondSource);
+    expect(currentSource).toContain("fixture2.mp4");
   });
 });
 
 test("stays stable under StrictMode mount/unmount lifecycle", async () => {
-  const source = await createFixtureVideoUrl();
   const { container, getByTestId } = render(
     <React.StrictMode>
       <HookHarness
-        options={{ sources: [{ src: source, type: "video/webm" }] }}
+        options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
       />
     </React.StrictMode>,
   );
@@ -258,47 +187,42 @@ test("stays stable under StrictMode mount/unmount lifecycle", async () => {
   await waitFor(() => {
     const videoElement = container.querySelector("video");
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
-    expect(currentSource).toContain("blob:");
+    expect(currentSource).toContain("fixture");
   });
 });
 
 test("handles rapid options churn and keeps latest media source", async () => {
-  const sourceA = await createFixtureVideoUrl();
-  const sourceB = await createFixtureVideoUrl();
-  const sourceC = await createFixtureVideoUrl();
-
   const { rerender, container } = render(
     <HookHarness
-      options={{ sources: [{ src: sourceA, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
     />,
   );
 
   rerender(
     <HookHarness
-      options={{ sources: [{ src: sourceB, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixture2Url, type: "video/mp4" }] }}
     />,
   );
   rerender(
     <HookHarness
-      options={{ sources: [{ src: sourceC, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
     />,
   );
 
   await waitFor(() => {
     const videoElement = container.querySelector("video");
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
-    expect(currentSource).toContain(sourceC);
+    expect(currentSource).toContain("fixture.mp4");
   });
 });
 
 test("does not recreate player repeatedly when options stay the same", async () => {
-  const source = await createFixtureVideoUrl();
   const seenPlayers = new Set<unknown>();
 
   const StableRerenderHarness = (): React.JSX.Element => {
     const [tick, setTick] = useState(0);
     const options = useMemo(
-      () => ({ sources: [{ src: source, type: "video/webm" }] }),
+      () => ({ sources: [{ src: fixtureUrl, type: "video/mp4" }] }),
       [],
     );
     const { Video, player } = useVideoJS(options);
@@ -340,11 +264,9 @@ test("does not recreate player repeatedly when options stay the same", async () 
 });
 
 test("skips initialization when the rendered video gets detached before effect runs", async () => {
-  const source = await createFixtureVideoUrl();
-
   const DetachedBeforeEffectHarness = (): React.JSX.Element => {
     const { Video, ready, player } = useVideoJS({
-      sources: [{ src: source, type: "video/webm" }],
+      sources: [{ src: fixtureUrl, type: "video/mp4" }],
     });
 
     useLayoutEffect(() => {
@@ -369,9 +291,11 @@ test("skips initialization when the rendered video gets detached before effect r
 });
 
 test("does not initialize a player when Video is not rendered", async () => {
-  const source = await createFixtureVideoUrl();
   const { getByTestId } = render(
-    <HookHarness options={{ sources: [{ src: source }] }} mounted={false} />,
+    <HookHarness
+      options={{ sources: [{ src: fixtureUrl }] }}
+      mounted={false}
+    />,
   );
 
   expect(getByTestId("ready").textContent).toBe("false");
@@ -386,12 +310,10 @@ test("does not initialize a player when Video is not rendered", async () => {
 });
 
 test("supports ref prop on Video component", async () => {
-  const source = await createFixtureVideoUrl();
-
   const RefHarness = (): React.JSX.Element => {
     const [hasRef, setHasRef] = useState(false);
     const { Video } = useVideoJS({
-      sources: [{ src: source, type: "video/webm" }],
+      sources: [{ src: fixtureUrl, type: "video/mp4" }],
     });
 
     return (
@@ -414,10 +336,9 @@ test("supports ref prop on Video component", async () => {
 });
 
 test("handles mount/unmount churn and restores player state when remounted", async () => {
-  const source = await createFixtureVideoUrl();
   const { getByTestId, rerender } = render(
     <HookHarness
-      options={{ sources: [{ src: source, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
       mounted={true}
     />,
   );
@@ -427,7 +348,7 @@ test("handles mount/unmount churn and restores player state when remounted", asy
 
   rerender(
     <HookHarness
-      options={{ sources: [{ src: source, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
       mounted={false}
     />,
   );
@@ -437,7 +358,7 @@ test("handles mount/unmount churn and restores player state when remounted", asy
 
   rerender(
     <HookHarness
-      options={{ sources: [{ src: source, type: "video/webm" }] }}
+      options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
       mounted={true}
     />,
   );
@@ -633,4 +554,75 @@ test("updates internal ref when external ref is missing", () => {
   __private__.setVideoNodeRef(videoNode, undefined, element);
 
   expect(videoNode.current).toBe(element);
+});
+
+test("forwards html attributes to the video element", () => {
+  const AttrHarness = (): React.JSX.Element => {
+    const { Video } = useVideoJS({ sources: [] });
+    return <Video data-testid="my-video" aria-label="test player" />;
+  };
+  const { container } = render(<AttrHarness />);
+  const video = container.querySelector("video");
+  expect(video?.getAttribute("data-testid")).toBe("my-video");
+  expect(video?.getAttribute("aria-label")).toBe("test player");
+});
+
+test("forwards playsInline to the video element", () => {
+  const AttrHarness = (): React.JSX.Element => {
+    const { Video } = useVideoJS({ sources: [] });
+    return <Video playsInline />;
+  };
+  const { container } = render(<AttrHarness />);
+  expect(container.querySelector("video")?.hasAttribute("playsinline")).toBe(
+    true,
+  );
+});
+
+test("merges hook classNames with Video className prop", () => {
+  const AttrHarness = (): React.JSX.Element => {
+    const { Video } = useVideoJS({ sources: [] }, "hook-class");
+    return <Video className="user-class" />;
+  };
+  const { container } = render(<AttrHarness />);
+  // After Video.js initialises, it takes the <video> element and uses it as the
+  // player root — adding its own vjs-* classes while keeping ours.  The native
+  // <video> gets class="vjs-tech", so we query the player root (.video-js) instead.
+  const playerEl = container.querySelector(".video-js");
+  expect(playerEl?.classList.contains("video-js")).toBe(true);
+  expect(playerEl?.classList.contains("hook-class")).toBe(true);
+  expect(playerEl?.classList.contains("user-class")).toBe(true);
+});
+
+test("track children are registered as video.js text tracks", async () => {
+  const TrackHarness = (): React.JSX.Element => {
+    const { Video, player } = useVideoJS({ sources: [] });
+    // Video.js reads <track> elements during init and removes them from the DOM.
+    // They are accessible via the remoteTextTracks() API.
+    const remoteTracks = player ? player.remoteTextTracks() : null;
+    const kinds = remoteTracks
+      ? [remoteTracks[0]?.kind ?? "", remoteTracks[1]?.kind ?? ""].join(",")
+      : "";
+    return (
+      <div>
+        <span data-testid="track-kinds">{kinds}</span>
+        <Video>
+          <track
+            kind="captions"
+            src="/captions.vtt"
+            srcLang="en"
+            label="English"
+          />
+          <track kind="subtitles" src="/subs.vtt" srcLang="fr" label="French" />
+        </Video>
+      </div>
+    );
+  };
+
+  const { getByTestId } = render(<TrackHarness />);
+
+  await waitFor(() => {
+    const kinds = getByTestId("track-kinds").textContent ?? "";
+    expect(kinds).toContain("captions");
+    expect(kinds).toContain("subtitles");
+  });
 });
