@@ -27,9 +27,9 @@
     "dev": "vite build --watch"
   },
   "peerDependencies": {
-    "react": ">=16.8.0 < 19",
-    "react-dom": ">=16.8.0 < 19",
-    "video.js": "^7.0.0"
+    "react": ">=16.8.0 < 20",
+    "react-dom": ">=16.8.0 < 20",
+    "video.js": ">=7 <9"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",
