@@ -18,6 +18,21 @@ const videojs = videojsModule as unknown as (
   options?: VideoJsPlayerOptions,
 ) => VideoJsPlayer;
 
+const restoreDisposedVideoNode = (
+  containerNode: HTMLDivElement,
+  originalVideoNodeParent: Node | null | undefined,
+  videoNode: MutableRefObject<HTMLVideoElement | null>,
+): void => {
+  if (originalVideoNodeParent && !containerNode.querySelector("video")) {
+    containerNode.appendChild(originalVideoNodeParent);
+    videoNode.current = containerNode.querySelector("video");
+  }
+};
+
+export const __private__ = {
+  restoreDisposedVideoNode,
+};
+
 // Integrating React and video.js is a bit tricky, especially when supporting
 // React 18 strict mode. We'll do our best to explain what happens in inline comments.
 
@@ -46,37 +61,34 @@ const VideoJsWrapper = forwardRef<
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-      const containerNode = containerRef.current;
-      const videoInContainer = containerNode?.querySelector(
+      const containerNode = containerRef.current as HTMLDivElement;
+
+      const connectedVideoNode = containerNode.querySelector(
         "video",
       ) as HTMLVideoElement | null;
       const currentVideoNode =
         videoNode.current?.isConnected === true
           ? videoNode.current
-          : videoInContainer;
+          : connectedVideoNode;
 
-      /* v8 ignore start -- stale-ref recovery is non-deterministic in browser automation */
-      if (currentVideoNode && currentVideoNode !== videoNode.current) {
+      if (!currentVideoNode || !currentVideoNode.isConnected) return;
+
+      if (videoNode.current !== currentVideoNode) {
         videoNode.current = currentVideoNode;
       }
-      /* v8 ignore stop */
 
-      if (!currentVideoNode?.parentNode || !currentVideoNode.isConnected)
-        return;
-
-      // Once we initialize the player, videojs will start mutating the DOM.
-      // We need a snapshot of the state just before, so we know what state
-      // to reset the DOM to.
       const originalVideoNodeParent =
-        currentVideoNode.parentNode.cloneNode(true);
+        currentVideoNode.parentNode?.cloneNode(true);
 
-      /* v8 ignore next -- player is reset during cleanup before this effect re-runs */
-      if (!player.current) {
-        player.current = videojs(currentVideoNode, videoJsOptionsCloned);
-        player.current.ready(() => {
-          if (player.current) {
-            onReady(player.current);
-          }
+      const isNewPlayer = !player.current;
+      const initializedPlayer = player.current
+        ? player.current
+        : videojs(currentVideoNode, videoJsOptionsCloned);
+
+      if (isNewPlayer) {
+        player.current = initializedPlayer;
+        initializedPlayer.ready(() => {
+          onReady(initializedPlayer);
         });
       }
 
@@ -84,35 +96,22 @@ const VideoJsWrapper = forwardRef<
         // Whenever something changes in the options object, we
         // want to reinitialize video.js, and destroy the old player by calling `player.current.dispose()`
 
-        /* v8 ignore next -- cleanup is only created for initialized players */
-        if (player.current) {
-          player.current.dispose();
+        initializedPlayer.dispose();
+        player.current = null;
 
-          // Unfortunately, video.js heavily mutates the DOM in a way that React doesn't
-          // like, so we need to readd the removed DOM elements directly after dispose.
-          // More concretely, the node marked with `data-vjs-player` will be removed from the
-          // DOM. We are readding the cloned original video node parent as it was when React first rendered it,
-          // so it is once again synchronized with React.
-          /* v8 ignore start -- defensive fallback for video.js DOM mutation timing */
-          if (
-            containerNode &&
-            currentVideoNode.parentNode &&
-            !containerNode.contains(currentVideoNode.parentNode)
-          ) {
-            containerNode.appendChild(originalVideoNodeParent);
-          }
-          /* v8 ignore stop */
+        restoreDisposedVideoNode(
+          containerNode,
+          originalVideoNodeParent,
+          videoNode,
+        );
 
-          player.current = null;
-          onDispose();
-        }
+        onDispose();
       };
 
       // Reinitialize only when deep-compared options or lifecycle handlers change.
     }, [videoJsOptionsCloned, onReady, onDispose, player]);
 
     return (
-      // TODO: can we get by withour introducing an extra div?
       <div ref={containerRef}>
         <div data-vjs-player>
           <video
