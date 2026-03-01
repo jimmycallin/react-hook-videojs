@@ -1,7 +1,7 @@
-import React, { useLayoutEffect } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { afterEach, expect, test } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { useVideoJS } from "./index";
+import { __private__, useVideoJS } from "./index";
 
 type VideoJsOptions = {
   sources?: Array<{ src: string; type?: string }>;
@@ -206,9 +206,10 @@ test("reinitializes player and swaps the media source when options change", asyn
   });
 });
 
-test("recovers when ref points to a detached video but container still has a connected video", async () => {
+test("recovers when ref points to detached video but container has a connected video", async () => {
   const firstSource = await createFixtureVideoUrl();
   const secondSource = await createFixtureVideoUrl();
+
   const { rerender, container } = render(
     <HookHarness
       options={{ sources: [{ src: firstSource, type: "video/webm" }] }}
@@ -221,14 +222,11 @@ test("recovers when ref points to a detached video but container still has a con
     expect(currentSource).toContain(firstSource);
   });
 
-  const originalVideoWrapper = container.querySelector("[data-vjs-player]");
-  expect(originalVideoWrapper).toBeTruthy();
-  const wrapperParent = originalVideoWrapper?.parentNode;
-  expect(wrapperParent).toBeTruthy();
-
-  const replacementVideoWrapper = originalVideoWrapper?.cloneNode(true);
-  if (wrapperParent && originalVideoWrapper && replacementVideoWrapper) {
-    wrapperParent.replaceChild(replacementVideoWrapper, originalVideoWrapper);
+  const currentWrapper = container.querySelector("[data-vjs-player]");
+  const wrapperParent = currentWrapper?.parentNode;
+  const replacementWrapper = currentWrapper?.cloneNode(true);
+  if (wrapperParent && currentWrapper && replacementWrapper) {
+    wrapperParent.replaceChild(replacementWrapper, currentWrapper);
   }
 
   rerender(
@@ -242,6 +240,103 @@ test("recovers when ref points to a detached video but container still has a con
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
     expect(currentSource).toContain(secondSource);
   });
+});
+
+test("stays stable under StrictMode mount/unmount lifecycle", async () => {
+  const source = await createFixtureVideoUrl();
+  const { container, getByTestId } = render(
+    <React.StrictMode>
+      <HookHarness
+        options={{ sources: [{ src: source, type: "video/webm" }] }}
+      />
+    </React.StrictMode>,
+  );
+
+  await waitFor(() => expect(container.querySelector("video")).toBeTruthy());
+  await waitFor(() => expect(getByTestId("ready").textContent).toBe("true"));
+  await waitFor(() => expect(getByTestId("player").textContent).toBe("set"));
+  await waitFor(() => {
+    const videoElement = container.querySelector("video");
+    const currentSource = videoElement?.currentSrc || videoElement?.src || "";
+    expect(currentSource).toContain("blob:");
+  });
+});
+
+test("handles rapid options churn and keeps latest media source", async () => {
+  const sourceA = await createFixtureVideoUrl();
+  const sourceB = await createFixtureVideoUrl();
+  const sourceC = await createFixtureVideoUrl();
+
+  const { rerender, container } = render(
+    <HookHarness
+      options={{ sources: [{ src: sourceA, type: "video/webm" }] }}
+    />,
+  );
+
+  rerender(
+    <HookHarness
+      options={{ sources: [{ src: sourceB, type: "video/webm" }] }}
+    />,
+  );
+  rerender(
+    <HookHarness
+      options={{ sources: [{ src: sourceC, type: "video/webm" }] }}
+    />,
+  );
+
+  await waitFor(() => {
+    const videoElement = container.querySelector("video");
+    const currentSource = videoElement?.currentSrc || videoElement?.src || "";
+    expect(currentSource).toContain(sourceC);
+  });
+});
+
+test("does not recreate player repeatedly when options stay the same", async () => {
+  const source = await createFixtureVideoUrl();
+  const seenPlayers = new Set<unknown>();
+
+  const StableRerenderHarness = (): React.JSX.Element => {
+    const [tick, setTick] = useState(0);
+    const options = useMemo(
+      () => ({ sources: [{ src: source, type: "video/webm" }] }),
+      [],
+    );
+    const { Video, player } = useVideoJS(options);
+
+    if (player) {
+      seenPlayers.add(player);
+    }
+
+    useEffect(() => {
+      if (tick >= 3) return;
+      const id = window.setTimeout(() => {
+        setTick((previous) => previous + 1);
+      }, 20);
+      return () => {
+        window.clearTimeout(id);
+      };
+    }, [tick]);
+
+    return (
+      <div>
+        <span data-testid="tick">{tick}</span>
+        <span data-testid="player-count">{seenPlayers.size}</span>
+        <Video />
+      </div>
+    );
+  };
+
+  const { getByTestId } = render(<StableRerenderHarness />);
+
+  await waitFor(() => {
+    expect(getByTestId("tick").textContent).toBe("3");
+  });
+
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 80);
+  });
+
+  expect(getByTestId("player-count").textContent).toBe("1");
 });
 
 test("skips initialization when the rendered video gets detached before effect runs", async () => {
@@ -288,4 +383,80 @@ test("does not initialize a player when Video is not rendered", async () => {
 
   expect(getByTestId("ready").textContent).toBe("false");
   expect(getByTestId("player").textContent).toBe("null");
+});
+
+test("handles mount/unmount churn and restores player state when remounted", async () => {
+  const source = await createFixtureVideoUrl();
+  const { getByTestId, rerender } = render(
+    <HookHarness
+      options={{ sources: [{ src: source, type: "video/webm" }] }}
+      mounted={true}
+    />,
+  );
+
+  await waitFor(() => expect(getByTestId("ready").textContent).toBe("true"));
+  await waitFor(() => expect(getByTestId("player").textContent).toBe("set"));
+
+  rerender(
+    <HookHarness
+      options={{ sources: [{ src: source, type: "video/webm" }] }}
+      mounted={false}
+    />,
+  );
+
+  await waitFor(() => expect(getByTestId("ready").textContent).toBe("false"));
+  await waitFor(() => expect(getByTestId("player").textContent).toBe("null"));
+
+  rerender(
+    <HookHarness
+      options={{ sources: [{ src: source, type: "video/webm" }] }}
+      mounted={true}
+    />,
+  );
+
+  await waitFor(() => expect(getByTestId("ready").textContent).toBe("true"));
+  await waitFor(() => expect(getByTestId("player").textContent).toBe("set"));
+});
+
+test("restores disposed video node when container has no video", () => {
+  const containerNode = document.createElement("div");
+  const originalVideoNodeParent = document.createElement("div");
+  const originalVideo = document.createElement("video");
+  originalVideoNodeParent.appendChild(originalVideo);
+
+  const videoNode = {
+    current: null,
+  } as React.MutableRefObject<HTMLVideoElement | null>;
+
+  __private__.restoreDisposedVideoNode(
+    containerNode,
+    originalVideoNodeParent,
+    videoNode,
+  );
+
+  expect(containerNode.querySelector("video")).toBeTruthy();
+  expect(videoNode.current).toBe(containerNode.querySelector("video"));
+});
+
+test("does not restore disposed video node when container already has video", () => {
+  const containerNode = document.createElement("div");
+  const existingVideo = document.createElement("video");
+  containerNode.appendChild(existingVideo);
+
+  const originalVideoNodeParent = document.createElement("div");
+  const originalVideo = document.createElement("video");
+  originalVideoNodeParent.appendChild(originalVideo);
+
+  const videoNode = {
+    current: existingVideo,
+  } as React.MutableRefObject<HTMLVideoElement | null>;
+
+  __private__.restoreDisposedVideoNode(
+    containerNode,
+    originalVideoNodeParent,
+    videoNode,
+  );
+
+  expect(containerNode.querySelectorAll("video")).toHaveLength(1);
+  expect(videoNode.current).toBe(existingVideo);
 });

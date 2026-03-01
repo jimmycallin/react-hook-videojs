@@ -17,9 +17,13 @@ import { useVideoJS } from "react-hook-videojs";
 
 const App = () => {
   const videoUrl = "http://techslides.com/demos/sample-videos/small.mp4";
+  const videoJsOptions = React.useMemo(
+    () => ({ sources: [{ src: videoUrl }] }),
+    [videoUrl],
+  );
   const className = "my-class";
   const { Video, player, ready } = useVideoJS(
-    { sources: [{ src: videoUrl }] },
+    videoJsOptions,
     className, // optional
   );
   if (ready) {
@@ -34,6 +38,8 @@ const App = () => {
 ```
 
 `useVideoJS` takes an options argument, and passes it without modifications to video.js.
+Pass a memoized options object (for example with `React.useMemo`) so the player only reinitializes when options values actually change.
+Use standard ESM imports (`import { useVideoJS } from "react-hook-videojs"`).
 You may also provide an optional second string argument that will be appended as class name on the `video` DOM node.
 
 See their [options reference](https://videojs.com/guides/options) for further information on the options argument.
