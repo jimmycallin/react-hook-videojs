@@ -1,6 +1,6 @@
 # react-hook-videojs
 
-> A simple react hook to easily integrate video.js with React. Supports React 18 Strict Mode.
+> A simple react hook to easily integrate video.js with React. Supports React 18/19 (including Strict Mode) and Video.js 7/8.
 
 [![NPM](https://img.shields.io/npm/v/react-hook-videojs.svg)](https://www.npmjs.com/package/react-hook-videojs)
 
@@ -77,3 +77,13 @@ const App = () => {
   return <Video muted autopictureinpicture />;
 };
 ```
+
+### Run compatibility matrix locally
+
+To run the same React/Video.js compatibility checks locally (React 18/19 × Video.js 7/8):
+
+```bash
+pnpm run test:matrix:local
+```
+
+This command runs in a temporary git worktree, so your current working tree stays unchanged.
