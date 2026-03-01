@@ -80,17 +80,11 @@ const VideoJsWrapper = forwardRef<
       const originalVideoNodeParent =
         currentVideoNode.parentNode?.cloneNode(true);
 
-      const isNewPlayer = !player.current;
-      const initializedPlayer = player.current
-        ? player.current
-        : videojs(currentVideoNode, videoJsOptionsCloned);
-
-      if (isNewPlayer) {
-        player.current = initializedPlayer;
-        initializedPlayer.ready(() => {
-          onReady(initializedPlayer);
-        });
-      }
+      const initializedPlayer = videojs(currentVideoNode, videoJsOptionsCloned);
+      player.current = initializedPlayer;
+      initializedPlayer.ready(() => {
+        onReady(initializedPlayer);
+      });
 
       return (): void => {
         // Whenever something changes in the options object, we
