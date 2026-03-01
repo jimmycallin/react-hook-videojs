@@ -1,4 +1,10 @@
-import React, { useLayoutEffect } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { afterEach, expect, test } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { __private__, useVideoJS } from "./index";
@@ -289,6 +295,54 @@ test("handles rapid options churn and keeps latest media source", async () => {
     const currentSource = videoElement?.currentSrc || videoElement?.src || "";
     expect(currentSource).toContain(sourceC);
   });
+});
+
+test("does not recreate player repeatedly when options stay the same", async () => {
+  const source = await createFixtureVideoUrl();
+
+  const StableRerenderHarness = (): React.JSX.Element => {
+    const [tick, setTick] = useState(0);
+    const options = useMemo(
+      () => ({ sources: [{ src: source, type: "video/webm" }] }),
+      [source],
+    );
+    const { Video, player } = useVideoJS(options);
+    const seenPlayers = useRef(new Set<unknown>());
+
+    if (player) {
+      seenPlayers.current.add(player);
+    }
+
+    useEffect(() => {
+      if (tick >= 3) return;
+      const id = window.setTimeout(() => {
+        setTick((previous) => previous + 1);
+      }, 20);
+      return () => {
+        window.clearTimeout(id);
+      };
+    }, [tick]);
+
+    return (
+      <div>
+        <span data-testid="tick">{tick}</span>
+        <span data-testid="player-count">{seenPlayers.current.size}</span>
+        <Video />
+      </div>
+    );
+  };
+
+  const { getByTestId } = render(<StableRerenderHarness />);
+
+  await waitFor(() => {
+    expect(getByTestId("tick").textContent).toBe("3");
+  });
+
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, 80);
+  });
+
+  expect(getByTestId("player-count").textContent).toBe("1");
 });
 
 test("skips initialization when the rendered video gets detached before effect runs", async () => {
