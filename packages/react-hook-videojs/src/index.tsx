@@ -184,15 +184,15 @@ const VideoJsWrapper = ({
   );
 };
 
-type VideoProps = VideoElementProps;
+export type VideoProps = VideoElementProps;
 
-type VideoType = (props: VideoProps) => React.JSX.Element;
+export type VideoComponent = (props: VideoProps) => React.JSX.Element;
 
 export const useVideoJS = (
   videoJsOptions: VideoJsPlayerOptions,
   classNames = "",
 ): {
-  Video: VideoType;
+  Video: VideoComponent;
   ready: boolean;
   player: VideoJsPlayer | null;
 } => {
