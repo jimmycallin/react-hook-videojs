@@ -222,11 +222,11 @@ test("recovers when ref points to detached video but container has a connected v
     expect(currentSource).toContain(firstSource);
   });
 
-  const currentWrapper = container.querySelector("[data-vjs-player]");
-  const wrapperParent = currentWrapper?.parentNode;
-  const replacementWrapper = currentWrapper?.cloneNode(true);
-  if (wrapperParent && currentWrapper && replacementWrapper) {
-    wrapperParent.replaceChild(replacementWrapper, currentWrapper);
+  const currentVideo = container.querySelector("video");
+  const videoParent = currentVideo?.parentNode;
+  const replacementVideo = currentVideo?.cloneNode(true);
+  if (videoParent && currentVideo && replacementVideo) {
+    videoParent.replaceChild(replacementVideo, currentVideo);
   }
 
   rerender(
@@ -448,19 +448,13 @@ test("handles mount/unmount churn and restores player state when remounted", asy
 
 test("restores disposed video node when container has no video", () => {
   const containerNode = document.createElement("div");
-  const originalVideoNodeParent = document.createElement("div");
   const originalVideo = document.createElement("video");
-  originalVideoNodeParent.appendChild(originalVideo);
 
   const videoNode = {
     current: null,
   } as React.MutableRefObject<HTMLVideoElement | null>;
 
-  __private__.restoreDisposedVideoNode(
-    containerNode,
-    originalVideoNodeParent,
-    videoNode,
-  );
+  __private__.restoreDisposedVideoNode(containerNode, originalVideo, videoNode);
 
   expect(containerNode.querySelector("video")).toBeTruthy();
   expect(videoNode.current).toBe(containerNode.querySelector("video"));
@@ -471,19 +465,13 @@ test("does not restore disposed video node when container already has video", ()
   const existingVideo = document.createElement("video");
   containerNode.appendChild(existingVideo);
 
-  const originalVideoNodeParent = document.createElement("div");
   const originalVideo = document.createElement("video");
-  originalVideoNodeParent.appendChild(originalVideo);
 
   const videoNode = {
     current: existingVideo,
   } as React.MutableRefObject<HTMLVideoElement | null>;
 
-  __private__.restoreDisposedVideoNode(
-    containerNode,
-    originalVideoNodeParent,
-    videoNode,
-  );
+  __private__.restoreDisposedVideoNode(containerNode, originalVideo, videoNode);
 
   expect(containerNode.querySelectorAll("video")).toHaveLength(1);
   expect(videoNode.current).toBe(existingVideo);

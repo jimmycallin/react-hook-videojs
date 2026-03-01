@@ -33,12 +33,12 @@ const getVideoClassName = (classNames: string, className?: string): string =>
 
 const restoreDisposedVideoNode = (
   containerNode: HTMLDivElement,
-  originalVideoNodeParent: Node | null | undefined,
+  originalVideoNode: HTMLVideoElement | null,
   videoNode: MutableRefObject<HTMLVideoElement | null>,
   videoRef?: Ref<HTMLVideoElement>,
 ): void => {
-  if (originalVideoNodeParent && !containerNode.querySelector("video")) {
-    containerNode.appendChild(originalVideoNodeParent);
+  if (originalVideoNode && !containerNode.querySelector("video")) {
+    containerNode.appendChild(originalVideoNode);
     setVideoNodeRef(
       videoNode,
       videoRef,
@@ -127,11 +127,12 @@ const VideoJsWrapper = ({
     if (!currentVideoNode || !currentVideoNode.isConnected) return;
 
     if (videoNode.current !== currentVideoNode) {
-      videoNode.current = currentVideoNode;
+      setVideoNodeRef(videoNode, videoRef, currentVideoNode);
     }
 
-    const originalVideoNodeParent =
-      currentVideoNode.parentNode?.cloneNode(true);
+    const originalVideoNode = currentVideoNode.cloneNode(
+      true,
+    ) as HTMLVideoElement;
 
     let disposed = false;
 
@@ -156,7 +157,7 @@ const VideoJsWrapper = ({
 
       restoreDisposedVideoNode(
         containerNode,
-        originalVideoNodeParent,
+        originalVideoNode,
         videoNode,
         videoRef,
       );
@@ -169,17 +170,15 @@ const VideoJsWrapper = ({
 
   return (
     <div ref={containerRef}>
-      <div data-vjs-player>
-        <video
-          ref={(value) => {
-            setVideoNodeRef(videoNode, videoRef, value);
-          }}
-          className={getVideoClassName(classNames, className)}
-          {...props}
-        >
-          {children}
-        </video>
-      </div>
+      <video
+        ref={(value) => {
+          setVideoNodeRef(videoNode, videoRef, value);
+        }}
+        className={getVideoClassName(classNames, className)}
+        {...props}
+      >
+        {children}
+      </video>
     </div>
   );
 };
