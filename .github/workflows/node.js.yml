@@ -17,7 +17,8 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
+  main-checks:
+    name: Main Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -35,7 +36,8 @@ jobs:
       - run: pnpm -r --if-present run build
       - run: pnpm test
 
-  compatibility-matrix:
+  compatibility-tests:
+    name: Compatibility Tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
