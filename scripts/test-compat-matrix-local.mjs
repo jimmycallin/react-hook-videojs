@@ -31,10 +31,18 @@ const run = (command, args, cwd, allowFailure = false) => {
 let worktreeCreated = false;
 
 try {
-  run("git", ["worktree", "add", "--detach", worktreePath, "HEAD"], repositoryRoot);
+  run(
+    "git",
+    ["worktree", "add", "--detach", worktreePath, "HEAD"],
+    repositoryRoot,
+  );
   worktreeCreated = true;
 
-  run("pnpm", ["install", "--prefer-offline", "--no-frozen-lockfile"], worktreePath);
+  run(
+    "pnpm",
+    ["install", "--prefer-offline", "--no-frozen-lockfile"],
+    worktreePath,
+  );
   run("pnpm", ["exec", "playwright", "install", "chromium"], worktreePath);
 
   const failures = [];
@@ -87,7 +95,12 @@ try {
   }
 } finally {
   if (worktreeCreated) {
-    run("git", ["worktree", "remove", "--force", worktreePath], repositoryRoot, true);
+    run(
+      "git",
+      ["worktree", "remove", "--force", worktreePath],
+      repositoryRoot,
+      true,
+    );
   }
 
   rmSync(tempRoot, { recursive: true, force: true });
