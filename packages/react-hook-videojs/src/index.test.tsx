@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { afterEach, expect, test } from "vitest";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { __private__, useVideoJS } from "./index";
@@ -299,18 +293,18 @@ test("handles rapid options churn and keeps latest media source", async () => {
 
 test("does not recreate player repeatedly when options stay the same", async () => {
   const source = await createFixtureVideoUrl();
+  const seenPlayers = new Set<unknown>();
 
   const StableRerenderHarness = (): React.JSX.Element => {
     const [tick, setTick] = useState(0);
     const options = useMemo(
       () => ({ sources: [{ src: source, type: "video/webm" }] }),
-      [source],
+      [],
     );
     const { Video, player } = useVideoJS(options);
-    const seenPlayers = useRef(new Set<unknown>());
 
     if (player) {
-      seenPlayers.current.add(player);
+      seenPlayers.add(player);
     }
 
     useEffect(() => {
@@ -326,7 +320,7 @@ test("does not recreate player repeatedly when options stay the same", async () 
     return (
       <div>
         <span data-testid="tick">{tick}</span>
-        <span data-testid="player-count">{seenPlayers.current.size}</span>
+        <span data-testid="player-count">{seenPlayers.size}</span>
         <Video />
       </div>
     );
