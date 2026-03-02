@@ -10,9 +10,11 @@ concurrency:
 
 on:
   workflow_dispatch:
-  release:
-    types:
-      - published
+    inputs:
+      version:
+        description: "Version to publish (e.g. 4.0.0-beta.1 or v4.0.0-beta.1)"
+        required: false
+        type: string
   push:
     tags:
       - "v*"
@@ -39,15 +41,61 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Resolve package name
+        id: package-name
+        run: |
+          PACKAGE_NAME=$(node --input-type=module -e "import { readFileSync } from 'node:fs'; const pkg = JSON.parse(readFileSync('./packages/react-hook-videojs/package.json', 'utf8')); console.log(pkg.name);")
+          echo "name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve version from trigger
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name || '' }}
+          REF_NAME: ${{ github.ref_name || '' }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "release" ]; then
+            RAW_VERSION="$RELEASE_TAG_NAME"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            RAW_VERSION="$REF_NAME"
+          else
+            RAW_VERSION="$INPUT_VERSION"
+          fi
+
+          if [ -z "$RAW_VERSION" ]; then
+            echo "Unable to resolve version from event. Provide workflow_dispatch input 'version'."
+            exit 1
+          fi
+
+          PACKAGE_VERSION="${RAW_VERSION#v}"
+          echo "version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set package version for CI publish
+        run: |
+          pnpm --filter react-hook-videojs exec npm pkg set version='${{ steps.version.outputs.version }}'
+
       - name: Resolve npm dist-tag from package version
         id: dist-tag
         run: |
-          PACKAGE_VERSION=$(node --input-type=module -e "import { readFileSync } from 'node:fs'; const pkg = JSON.parse(readFileSync('./packages/react-hook-videojs/package.json', 'utf8')); console.log(pkg.version);")
+          PACKAGE_VERSION="${{ steps.version.outputs.version }}"
           if echo "$PACKAGE_VERSION" | grep -q "-"; then
             echo "tag=next" >> "$GITHUB_OUTPUT"
           else
             echo "tag=latest" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Check if version already exists on npm
+        id: npm-version
+        run: |
+          PACKAGE_REF="${{ steps.package-name.outputs.name }}@${{ steps.version.outputs.version }}"
+          if npm view "$PACKAGE_REF" version >/dev/null 2>&1; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version already exists on npm: $PACKAGE_REF"
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish package with npm provenance (OIDC)
+        if: steps.npm-version.outputs.should_publish == 'true'
         run: pnpm --filter react-hook-videojs publish --access public --provenance --no-git-checks --tag ${{ steps.dist-tag.outputs.tag }}
