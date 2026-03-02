@@ -215,8 +215,7 @@ export type VideoComponent = (props: VideoProps) => React.JSX.Element;
  *
  * @param videoJsOptions - Video.js player options. **Must be memoized** (e.g.
  *   with `React.useMemo`) so the player only reinitializes when options values
- *   actually change, not on every render. DOM node references inside options
- *   (such as `el`/`restoreEl`) are preserved by reference and are not cloned.
+ *   actually change, not on every render.
  * @param classNames - Optional CSS class name(s) appended to the `<video>`
  *   node in addition to the required `"video-js"` class.
  * @returns An object with three fields:
