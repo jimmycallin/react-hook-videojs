@@ -32,7 +32,7 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm -r --if-present run build
       - run: pnpm test
 
@@ -60,5 +60,5 @@ jobs:
         run: pnpm -w add -D --ignore-scripts react@19 react-dom@19 && pnpm --filter react-hook-videojs add -D --ignore-scripts react@19 react-dom@19
       - name: Pin package compatibility versions
         run: pnpm --filter react-hook-videojs add -D --ignore-scripts video.js@${{ matrix.videojs }}
-      - run: pnpm exec playwright install chromium
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm run test:unit

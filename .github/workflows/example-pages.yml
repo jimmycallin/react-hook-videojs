@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: example-main
-      url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/main/
+      url: ${{ steps.pages.outputs.base_url }}
 
     steps:
       - uses: actions/checkout@v5
@@ -35,9 +35,32 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Resolve Pages base URL
+        id: pages
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            let baseUrl;
+            try {
+              const response = await github.rest.repos.getPages({ owner, repo });
+              baseUrl = response.data.html_url;
+            } catch {
+              baseUrl = repo.toLowerCase() === `${owner.toLowerCase()}.github.io`
+                ? `https://${owner}.github.io/`
+                : `https://${owner}.github.io/${repo}/`;
+            }
+
+            const normalized = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+            const basePath = new URL(normalized).pathname;
+
+            core.setOutput("base_url", normalized);
+            core.setOutput("base_path", basePath);
       - name: Build example app (main)
         env:
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/main/
+          VITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}
         run: pnpm --filter example build
       - name: Deploy main example
         uses: peaceiris/actions-gh-pages@v4
@@ -45,7 +68,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: ./packages/example/dist
-          destination_dir: main
           keep_files: true
 
   deploy-pr-preview:
@@ -56,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: example-pr-${{ github.event.pull_request.number }}
-      url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/
+      url: ${{ steps.pages.outputs.pr_url }}
 
     steps:
       - uses: actions/checkout@v5
@@ -70,9 +92,34 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Resolve Pages base URL
+        id: pages
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = context.payload.pull_request.number;
+
+            let baseUrl;
+            try {
+              const response = await github.rest.repos.getPages({ owner, repo });
+              baseUrl = response.data.html_url;
+            } catch {
+              baseUrl = repo.toLowerCase() === `${owner.toLowerCase()}.github.io`
+                ? `https://${owner}.github.io/`
+                : `https://${owner}.github.io/${repo}/`;
+            }
+
+            const normalized = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+            const basePath = new URL(normalized).pathname;
+            const prBasePath = `${basePath.replace(/\/$/, "")}/pr-${prNumber}/`;
+
+            core.setOutput("pr_url", `${normalized}pr-${prNumber}/`);
+            core.setOutput("pr_base_path", prBasePath);
       - name: Build example app (PR preview)
         env:
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/
+          VITE_BASE_PATH: ${{ steps.pages.outputs.pr_base_path }}
         run: pnpm --filter example build
       - name: Deploy PR preview
         uses: peaceiris/actions-gh-pages@v4
