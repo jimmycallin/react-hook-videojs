@@ -1,0 +1,162 @@
+name: Example App Pages
+
+permissions:
+  contents: write
+  deployments: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  deploy-main:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: example-main
+      url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/main/
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build example app (main)
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/main/
+        run: pnpm --filter example build
+      - name: Deploy main example
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./packages/example/dist
+          destination_dir: main
+          keep_files: true
+
+  deploy-pr-preview:
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment:
+      name: example-pr-${{ github.event.pull_request.number }}
+      url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - name: Use Node.js from .nvmrc
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build example app (PR preview)
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}/
+        run: pnpm --filter example build
+      - name: Deploy PR preview
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./packages/example/dist
+          destination_dir: pr-${{ github.event.pull_request.number }}
+          keep_files: true
+
+  cleanup-pr-preview:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Remove PR preview directory from gh-pages
+        run: |
+          if ! git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "gh-pages branch does not exist yet; nothing to clean."
+            exit 0
+          fi
+
+          git fetch origin gh-pages:gh-pages
+          git checkout gh-pages
+
+          PREVIEW_DIR="pr-${{ github.event.pull_request.number }}"
+          if [ ! -d "$PREVIEW_DIR" ]; then
+            echo "No preview directory found for $PREVIEW_DIR"
+            exit 0
+          fi
+
+          rm -rf "$PREVIEW_DIR"
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove preview for PR #${{ github.event.pull_request.number }}"
+          git push origin gh-pages
+
+      - name: Mark and delete PR deployment records
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const environment = `example-pr-${context.payload.pull_request.number}`;
+
+            const deployments = await github.paginate(github.rest.repos.listDeployments, {
+              owner,
+              repo,
+              environment,
+              per_page: 100,
+            });
+
+            for (const deployment of deployments) {
+              try {
+                await github.rest.repos.createDeploymentStatus({
+                  owner,
+                  repo,
+                  deployment_id: deployment.id,
+                  state: "inactive",
+                  auto_inactive: false,
+                });
+              } catch (error) {
+                console.warn(`Failed to set deployment ${deployment.id} inactive: ${error}`);
+              }
+
+              try {
+                await github.rest.repos.deleteDeployment({
+                  owner,
+                  repo,
+                  deployment_id: deployment.id,
+                });
+              } catch (error) {
+                console.warn(`Failed to delete deployment ${deployment.id}: ${error}`);
+              }
+            }
