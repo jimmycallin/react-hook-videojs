@@ -43,17 +43,9 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            let baseUrl;
-            try {
-              const response = await github.rest.repos.getPages({ owner, repo });
-              baseUrl = response.data.html_url;
-            } catch {
-              baseUrl = repo.toLowerCase() === `${owner.toLowerCase()}.github.io`
-                ? `https://${owner}.github.io/`
-                : `https://${owner}.github.io/${repo}/`;
-            }
-
-            const normalized = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+            const normalized = repo.toLowerCase() === `${owner.toLowerCase()}.github.io`
+              ? `https://${owner}.github.io/`
+              : `https://${owner}.github.io/${repo}/`;
             const basePath = new URL(normalized).pathname;
 
             core.setOutput("base_url", normalized);
@@ -101,17 +93,9 @@ jobs:
             const repo = context.repo.repo;
             const prNumber = context.payload.pull_request.number;
 
-            let baseUrl;
-            try {
-              const response = await github.rest.repos.getPages({ owner, repo });
-              baseUrl = response.data.html_url;
-            } catch {
-              baseUrl = repo.toLowerCase() === `${owner.toLowerCase()}.github.io`
-                ? `https://${owner}.github.io/`
-                : `https://${owner}.github.io/${repo}/`;
-            }
-
-            const normalized = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+            const normalized = repo.toLowerCase() === `${owner.toLowerCase()}.github.io`
+              ? `https://${owner}.github.io/`
+              : `https://${owner}.github.io/${repo}/`;
             const basePath = new URL(normalized).pathname;
             const prBasePath = `${basePath.replace(/\/$/, "")}/pr-${prNumber}/`;
 
