@@ -11,6 +11,7 @@ type VideoJsOptions = {
   autoplay?: boolean;
   muted?: boolean;
   playsinline?: boolean;
+  techOrder?: string[];
 };
 
 const HookHarness = ({
@@ -139,7 +140,7 @@ test("reinitializes player and swaps the media source when options change", asyn
   });
 });
 
-test("recovers when ref points to detached video but container has a connected video", async () => {
+test("recovers when ref points to detached video and a reinit is triggered", async () => {
   const { rerender, container } = render(
     <HookHarness
       options={{ sources: [{ src: fixtureUrl, type: "video/mp4" }] }}
@@ -161,7 +162,10 @@ test("recovers when ref points to detached video but container has a connected v
 
   rerender(
     <HookHarness
-      options={{ sources: [{ src: fixture2Url, type: "video/mp4" }] }}
+      options={{
+        sources: [{ src: fixture2Url, type: "video/mp4" }],
+        techOrder: ["html5", "flash"],
+      }}
     />,
   );
 
@@ -216,6 +220,72 @@ test("handles rapid options churn and keeps latest media source", async () => {
   });
 });
 
+test("applies source changes dynamically without reinitializing the player", async () => {
+  const playerInstances = new Set<unknown>();
+
+  const DynamicSrcHarness = ({ src }: { src: string }): React.JSX.Element => {
+    const options = useMemo(
+      () => ({ sources: [{ src, type: "video/mp4" }] }),
+      [src],
+    );
+    const { Video, player } = useVideoJS(options);
+
+    useEffect(() => {
+      if (player) {
+        playerInstances.add(player);
+      }
+    }, [player]);
+
+    return <Video />;
+  };
+
+  const { rerender } = render(<DynamicSrcHarness src={fixtureUrl} />);
+  await waitFor(() => expect(playerInstances.size).toBe(1));
+
+  rerender(<DynamicSrcHarness src={fixture2Url} />);
+
+  await waitFor(() => {
+    const src = document.querySelector("video")?.currentSrc ?? "";
+    expect(src).toContain("fixture2");
+  });
+
+  expect(playerInstances.size).toBe(1);
+});
+
+test("reinitializes player when non-dynamic options change", async () => {
+  const playerInstances = new Set<unknown>();
+
+  const TechHarness = ({
+    techOrder,
+  }: {
+    techOrder: string[];
+  }): React.JSX.Element => {
+    const options = useMemo(
+      () =>
+        ({
+          sources: [{ src: fixtureUrl, type: "video/mp4" }],
+          techOrder,
+        }) as import("video.js").VideoJsPlayerOptions,
+      [techOrder],
+    );
+    const { Video, player } = useVideoJS(options);
+
+    useEffect(() => {
+      if (player) {
+        playerInstances.add(player);
+      }
+    }, [player]);
+
+    return <Video />;
+  };
+
+  const { rerender } = render(<TechHarness techOrder={["html5"]} />);
+  await waitFor(() => expect(playerInstances.size).toBe(1));
+
+  rerender(<TechHarness techOrder={["html5", "flash"]} />);
+  await waitFor(() => expect(playerInstances.size).toBe(2));
+});
+
 test("does not recreate player repeatedly when options stay the same", async () => {
   const seenPlayers = new Set<unknown>();
 
@@ -261,6 +331,39 @@ test("does not recreate player repeatedly when options stay the same", async () 
   });
 
   expect(getByTestId("player-count").textContent).toBe("1");
+});
+
+test("keeps Video component identity stable when options change", async () => {
+  const seenVideoComponents = new Set<unknown>();
+
+  const StableVideoIdentityHarness = ({
+    controls,
+  }: {
+    controls: boolean;
+  }): React.JSX.Element => {
+    const options = useMemo(
+      () => ({ sources: [{ src: fixtureUrl, type: "video/mp4" }], controls }),
+      [controls],
+    );
+    const { Video } = useVideoJS(options);
+    seenVideoComponents.add(Video);
+
+    return <Video />;
+  };
+
+  const { rerender } = render(<StableVideoIdentityHarness controls={true} />);
+
+  await waitFor(() => {
+    expect(document.querySelector("video")).toBeTruthy();
+  });
+
+  rerender(<StableVideoIdentityHarness controls={false} />);
+
+  await waitFor(() => {
+    expect(document.querySelector("video")).toBeTruthy();
+  });
+
+  expect(seenVideoComponents.size).toBe(1);
 });
 
 test("skips initialization when the rendered video gets detached before effect runs", async () => {
@@ -514,6 +617,107 @@ test("builds merged video className", () => {
     "video-js hook-class prop-class",
   );
   expect(__private__.getVideoClassName("", undefined)).toBe("video-js");
+});
+
+test("getChangedEntries returns changed keys and next values", () => {
+  const prev = {
+    sources: [{ src: "a.mp4" }],
+    controls: true,
+    muted: false,
+  } as import("video.js").VideoJsPlayerOptions;
+  const next = {
+    sources: [{ src: "b.mp4" }],
+    controls: true,
+    muted: true,
+  } as import("video.js").VideoJsPlayerOptions;
+
+  const changed = __private__.getChangedEntries(prev, next);
+
+  expect(changed).toHaveLength(2);
+  expect(changed.find(([key]) => key === "sources")?.[1]).toEqual([
+    { src: "b.mp4" },
+  ]);
+  expect(changed.find(([key]) => key === "muted")?.[1]).toBe(true);
+});
+
+test("getChangedEntries returns empty array when options are unchanged", () => {
+  const options = {
+    sources: [{ src: "a.mp4" }],
+    controls: true,
+  } as import("video.js").VideoJsPlayerOptions;
+
+  expect(__private__.getChangedEntries(options, options)).toHaveLength(0);
+});
+
+test("isDynamicCandidate resolves standard options and alias", () => {
+  expect(__private__.isDynamicCandidate("controls")).toBe(true);
+  expect(__private__.isDynamicCandidate("muted")).toBe(true);
+  expect(__private__.isDynamicCandidate("volume")).toBe(true);
+  expect(__private__.isDynamicCandidate("sources")).toBe(true);
+});
+
+test("isDynamicCandidate returns false for unknown options", () => {
+  expect(__private__.isDynamicCandidate("techOrder")).toBe(false);
+  expect(__private__.isDynamicCandidate("__nonexistent__")).toBe(false);
+});
+
+test("applyDynamically calls aliased and direct methods", () => {
+  const src = vi.fn();
+  const controls = vi.fn();
+  const fakePlayer = {
+    src,
+    controls,
+  } as unknown as import("video.js").VideoJsPlayer;
+
+  expect(
+    __private__.applyDynamically(fakePlayer, "sources", [{ src: "a.mp4" }]),
+  ).toBe(true);
+  expect(__private__.applyDynamically(fakePlayer, "controls", false)).toBe(
+    true,
+  );
+
+  expect(src).toHaveBeenCalledWith([{ src: "a.mp4" }]);
+  expect(controls).toHaveBeenCalledWith(false);
+});
+
+test("applyDynamically returns false for missing or throwing methods", () => {
+  const missingPlayer = {} as import("video.js").VideoJsPlayer;
+  expect(__private__.applyDynamically(missingPlayer, "controls", false)).toBe(
+    false,
+  );
+
+  const controls = vi.fn(() => {
+    throw new Error("boom");
+  });
+  const throwingPlayer = {
+    controls,
+  } as unknown as import("video.js").VideoJsPlayer;
+  expect(__private__.applyDynamically(throwingPlayer, "controls", false)).toBe(
+    false,
+  );
+});
+
+test("stableSerialize normalizes object key order", () => {
+  expect(__private__.stableSerialize({ a: 1, b: 2 })).toBe(
+    __private__.stableSerialize({ b: 2, a: 1 }),
+  );
+});
+
+test("stableSerialize handles special values", () => {
+  const circular = { value: 1 } as { value: number; self?: unknown };
+  circular.self = circular;
+
+  const serialized = __private__.stableSerialize({
+    missing: undefined,
+    loop: circular,
+    value: 1n,
+    fn: () => true,
+  });
+
+  expect(serialized).toContain("[Undefined]");
+  expect(serialized).toContain("[Circular]");
+  expect(serialized).toContain("[BigInt:1]");
+  expect(serialized).toContain("[Function:");
 });
 
 test("updates internal and callback refs for video node", () => {
