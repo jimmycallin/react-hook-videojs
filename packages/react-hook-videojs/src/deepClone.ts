@@ -102,7 +102,11 @@ const deepCloneInternal = <T>(value: T, seen: WeakMap<object, unknown>): T => {
   }
 
   const clonedObject = Array.isArray(value)
-    ? new Array((value as unknown[]).length)
+    ? (() => {
+        const clonedArray: unknown[] = [];
+        clonedArray.length = (value as unknown[]).length;
+        return clonedArray;
+      })()
     : Object.create(Object.getPrototypeOf(value));
 
   seen.set(value as object, clonedObject);
