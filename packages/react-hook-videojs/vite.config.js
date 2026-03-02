@@ -6,9 +6,12 @@ import pkg from "./package.json";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const dependencies = pkg.dependencies ?? {};
+const peerDependencies = pkg.peerDependencies ?? {};
+
 const external = [
-  ...Object.keys(pkg.dependencies),
-  ...Object.keys(pkg.peerDependencies),
+  ...Object.keys(dependencies),
+  ...Object.keys(peerDependencies),
 ];
 
 export default defineConfig({
