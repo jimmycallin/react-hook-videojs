@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import type { ComponentPropsWithRef, MutableRefObject, Ref } from "react";
 import videojsModule from "video.js";
 import type { VideoJsPlayer, VideoJsPlayerOptions } from "video.js";
-import cloneDeep from "lodash.clonedeep";
+import deepClone from "./deepClone";
 
 const videojs = videojsModule as unknown as (
   id: string | Element,
@@ -113,7 +113,7 @@ const VideoJsWrapper = ({
   ...props
 }: VideoJsWrapperProps): React.JSX.Element => {
   const videoJsOptionsCloned = useMemo(
-    () => cloneDeep(videoJsOptions),
+    () => deepClone(videoJsOptions),
     [videoJsOptions],
   );
   const videoNode = useRef<HTMLVideoElement | null>(null);
