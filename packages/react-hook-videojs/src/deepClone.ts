@@ -27,31 +27,48 @@ const deepCloneInternal = <T>(value: T, seen: WeakMap<object, unknown>): T => {
   }
 
   if (value instanceof Date) {
-    return new Date(value.getTime()) as T;
+    const clonedDate = new Date(value.getTime());
+    seen.set(value, clonedDate);
+    return clonedDate as T;
   }
 
   if (value instanceof RegExp) {
-    return new RegExp(value.source, value.flags) as T;
+    const clonedRegExp = new RegExp(value.source, value.flags);
+    clonedRegExp.lastIndex = value.lastIndex;
+    seen.set(value, clonedRegExp);
+    return clonedRegExp as T;
   }
 
   if (value instanceof ArrayBuffer) {
-    return value.slice(0) as T;
+    const clonedBuffer = value.slice(0);
+    seen.set(value, clonedBuffer);
+    return clonedBuffer as T;
   }
 
   if (ArrayBuffer.isView(value)) {
     if (value instanceof DataView) {
       const clonedBuffer = deepCloneInternal(value.buffer, seen);
-      return new DataView(
+      const clonedDataView = new DataView(
         clonedBuffer,
         value.byteOffset,
         value.byteLength,
-      ) as T;
+      );
+      seen.set(value, clonedDataView);
+      return clonedDataView as T;
     }
 
     const TypedArrayConstructor = value.constructor as {
-      new (typedArray: ArrayBufferView): unknown;
+      new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): unknown;
     };
-    return new TypedArrayConstructor(value) as T;
+    const clonedBuffer = deepCloneInternal(value.buffer, seen);
+    const length = "length" in value ? (value as { length: number }).length : undefined;
+    const clonedTypedArray = new TypedArrayConstructor(
+      clonedBuffer,
+      value.byteOffset,
+      length,
+    );
+    seen.set(value, clonedTypedArray);
+    return clonedTypedArray as T;
   }
 
   if (value instanceof Map) {
