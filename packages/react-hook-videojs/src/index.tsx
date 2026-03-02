@@ -3,13 +3,11 @@ import type { ComponentPropsWithRef, MutableRefObject, Ref } from "react";
 import videojsModule from "video.js";
 import deepClone from "./deepClone.js";
 
-type VideoJsPlayer = ReturnType<typeof videojsModule>;
-type VideoJsPlayerOptions = Parameters<typeof videojsModule>[1];
+type VideoJsModule = (typeof import("video.js"))["default"];
+type VideoJsPlayer = ReturnType<VideoJsModule>;
+type VideoJsPlayerOptions = Parameters<VideoJsModule>[1];
 
-const videojs = videojsModule as unknown as (
-  id: string | Element,
-  options?: VideoJsPlayerOptions,
-) => VideoJsPlayer;
+const videojs = videojsModule as VideoJsModule;
 
 const setVideoNodeRef = (
   videoNode: MutableRefObject<HTMLVideoElement | null>,
