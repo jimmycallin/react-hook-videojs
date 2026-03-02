@@ -7,7 +7,7 @@ type VideoJsModule = (typeof import("video.js"))["default"];
 type VideoJsPlayer = ReturnType<VideoJsModule>;
 type VideoJsPlayerOptions = Parameters<VideoJsModule>[1];
 
-const videojs = videojsModule as VideoJsModule;
+const videojs = videojsModule as unknown as VideoJsModule;
 
 const setVideoNodeRef = (
   videoNode: MutableRefObject<HTMLVideoElement | null>,
