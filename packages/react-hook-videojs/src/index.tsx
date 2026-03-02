@@ -1,8 +1,10 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import type { ComponentPropsWithRef, MutableRefObject, Ref } from "react";
 import videojsModule from "video.js";
-import type { VideoJsPlayer, VideoJsPlayerOptions } from "video.js";
-import deepClone from "./deepClone";
+import deepClone from "./deepClone.js";
+
+type VideoJsPlayer = ReturnType<typeof videojsModule>;
+type VideoJsPlayerOptions = Parameters<typeof videojsModule>[1];
 
 const videojs = videojsModule as unknown as (
   id: string | Element,
