@@ -63,9 +63,10 @@ const deepCloneInternal = <T>(value: T, seen: WeakMap<object, unknown>): T => {
         byteOffset?: number,
         length?: number,
       ): unknown;
+      BYTES_PER_ELEMENT: number;
     };
     const clonedBuffer = deepCloneInternal(value.buffer, seen);
-    const length = (value as { length: number }).length;
+    const length = value.byteLength / TypedArrayConstructor.BYTES_PER_ELEMENT;
     const clonedTypedArray = new TypedArrayConstructor(
       clonedBuffer,
       value.byteOffset,
