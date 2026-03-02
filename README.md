@@ -15,6 +15,7 @@ PR preview (for open PRs): `https://jimmycallin.github.io/react-hook-videojs/pr-
 - [Quick start](#quick-start)
 - [API reference](#api-reference)
 - [Recipes](#recipes)
+- [React Server Components (Next.js)](#react-server-components-nextjs)
 - [Troubleshooting](#troubleshooting)
 
 ## Why this hook
@@ -278,23 +279,51 @@ const options = useMemo(
 The hook is designed for React 19 Strict Mode, where components mount/unmount
 twice in development. It handles this lifecycle without leaking player instances.
 
-### Server-side rendering (RSC / Next.js)
+## React Server Components
 
-`useVideoJS` uses DOM APIs and browser-only Video.js internals. It cannot run
-on the server. In a React Server Components environment, mark any component
-that uses this hook with the `"use client"` directive:
+`react-hook-videojs` is **client-only**.
+
+- Use it inside a component with the `"use client"` directive.
+- Do not call `useVideoJS` from a Server Component.
+- Pass only serializable props from Server Components to Client Components.
+
+### Recommended App Router pattern
+
+Create a dedicated client wrapper for the player:
 
 ```tsx
+// app/components/video-player-client.tsx
 "use client";
 
+import { useMemo } from "react";
+import "video.js/dist/video-js.css";
 import { useVideoJS } from "react-hook-videojs";
 
-export function MyPlayer({ src }: { src: string }) {
+export function VideoPlayerClient({ src }: { src: string }) {
   const options = useMemo(() => ({ sources: [{ src }] }), [src]);
   const { Video } = useVideoJS(options);
-  return <Video />;
+  return <Video controls playsInline />;
 }
 ```
+
+Render that client component from a Server Component:
+
+```tsx
+// app/page.tsx (Server Component)
+import { VideoPlayerClient } from "./components/video-player-client";
+
+export default async function Page() {
+  const src = "https://example.com/video.mp4";
+  return <VideoPlayerClient src={src} />;
+}
+```
+
+### RSC notes
+
+- Build `videoJsOptions` in the client component with `useMemo`.
+- If options come from the server, pass plain JSON-ish data (strings, numbers,
+  booleans, arrays, objects) and construct final Video.js options client-side.
+- Avoid passing DOM nodes/functions across the server boundary.
 
 ---
 
@@ -335,6 +364,12 @@ Runs the repository's local compatibility matrix script in a temporary worktree.
 
 `useVideoJS` is client-only. In Next.js / RSC, move it into a client component
 and add the `"use client"` directive.
+
+### Next.js App Router warning about non-serializable props
+
+Server Components can only pass serializable props to Client Components. Pass
+plain data (like `src`, `poster`, `playbackRates`) and create memoized
+`videoJsOptions` in the client wrapper.
 
 ### Video.js styles look missing
 
