@@ -1,8 +1,29 @@
 # react-hook-videojs
 
-> A React hook for integrating Video.js with React 19. Handles player initialization, disposal, Strict Mode double-invocations, and options-driven reinitialization — so you don't have to.
+> A React hook for integrating Video.js with React 19.
+> It handles player setup, disposal, Strict Mode behavior, and options-driven reinitialization with a small, predictable API.
 
 [![NPM](https://img.shields.io/npm/v/react-hook-videojs.svg)](https://www.npmjs.com/package/react-hook-videojs)
+
+Live example: [https://jimmycallin.github.io/react-hook-videojs/](https://jimmycallin.github.io/react-hook-videojs/)
+
+PR preview (for open PRs): `https://jimmycallin.github.io/react-hook-videojs/pr-<PR_NUMBER>/`
+
+## Quick links
+
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [API reference](#api-reference)
+- [Recipes](#recipes)
+- [Troubleshooting](#troubleshooting)
+
+## Why this hook
+
+- React-first Video.js lifecycle management (mount/init, unmount/dispose)
+- Strict Mode-safe behavior in React 19 development
+- Predictable reinitialization when options change
+- Native `<video>` props, children, and `ref` forwarding
+- Minimal API: `const { Video, ready, player } = useVideoJS(...)`
 
 ---
 
@@ -63,11 +84,15 @@ const { Video, ready, player } = useVideoJS(
 
 **`videoJsOptions`** is passed directly to Video.js — see the [Video.js options reference](https://videojs.com/guides/options) for all available properties.
 
-**Important:** wrap `videoJsOptions` in `React.useMemo` (or define it outside the component). The hook uses deep equality on this object to decide when to dispose and reinitialize the player. If you pass a new object literal on every render, the player will be recreated on every render.
+**Important:** wrap `videoJsOptions` in `React.useMemo` (or define it outside the component).
+The hook deep-clones options and reinitializes when the options object changes;
+passing a fresh object on every render recreates the player every render.
 
 ---
 
 ## Recipes
+
+These patterns cover the most common integrations.
 
 ### Accessing player events
 
@@ -110,7 +135,7 @@ const MyPlayer = ({ src }: { src: string }) => {
 
 ### Calling player methods imperatively
 
-Access `player` to call any Video.js API method.
+Use `player` for direct Video.js API calls.
 
 ```tsx
 const { Video, ready, player } = useVideoJS(options);
@@ -186,7 +211,7 @@ const MyPlayer = () => {
 
 ### Switching sources
 
-Change the `sources` option value — the player reinitializes automatically.
+Update `sources` in options to trigger automatic reinitialization.
 
 ```tsx
 const [src, setSrc] = useState("https://example.com/video-1.mp4");
@@ -221,8 +246,8 @@ const options = useMemo(
 
 ### Mount / unmount
 
-Conditionally render `<Video>` to mount and unmount the player. The player is
-disposed when `<Video>` unmounts and reinitialized when it mounts again.
+Conditionally render `<Video>` to mount and unmount the player.
+The player is disposed on unmount and reinitialized on remount.
 
 ```tsx
 const [visible, setVisible] = useState(true);
@@ -250,7 +275,8 @@ const options = useMemo(
 
 ### React Strict Mode
 
-The hook is designed to work correctly under React 18 / 19 Strict Mode, which mounts and unmounts every component twice in development. The player handles the double-invoke lifecycle without leaking instances or producing console errors.
+The hook is designed for React 19 Strict Mode, where components mount/unmount
+twice in development. It handles this lifecycle without leaking player instances.
 
 ### Server-side rendering (RSC / Next.js)
 
@@ -295,7 +321,28 @@ Open [http://localhost:5173](http://localhost:5173). The example demonstrates:
 pnpm run test:matrix:local
 ```
 
-Runs the test suite against every combination of React 18/19 and Video.js 7/8 in a temporary git worktree.
+Runs the repository's local compatibility matrix script in a temporary worktree.
+
+---
+
+## Troubleshooting
+
+### Player keeps reinitializing
+
+`videoJsOptions` is probably recreated each render. Memoize it with `useMemo`.
+
+### SSR / RSC error (`window` / DOM access)
+
+`useVideoJS` is client-only. In Next.js / RSC, move it into a client component
+and add the `"use client"` directive.
+
+### Video.js styles look missing
+
+Import Video.js CSS once in your app:
+
+```tsx
+import "video.js/dist/video-js.css";
+```
 
 ---
 
