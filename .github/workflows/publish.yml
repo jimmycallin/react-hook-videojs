@@ -96,6 +96,101 @@ jobs:
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Decide whether to move npm "next" tag to this stable release
+        id: next-tag
+        if: steps.dist-tag.outputs.tag == 'latest' && steps.npm-version.outputs.should_publish == 'true'
+        env:
+          PACKAGE_NAME: ${{ steps.package-name.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          CURRENT_NEXT_VERSION=$(npm view "${PACKAGE_NAME}@next" version 2>/dev/null || true)
+          echo "current_next=$CURRENT_NEXT_VERSION" >> "$GITHUB_OUTPUT"
+
+          SHOULD_SET_NEXT=$(node --input-type=module - "$PACKAGE_VERSION" "$CURRENT_NEXT_VERSION" <<'NODE'
+          const [publishedVersion, currentNextVersion] = process.argv.slice(2);
+
+          const parseSemver = (version) => {
+            const match = version.match(
+              /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?$/,
+            );
+            if (!match) {
+              throw new Error(`Invalid semver version: ${version}`);
+            }
+            return {
+              major: Number(match[1]),
+              minor: Number(match[2]),
+              patch: Number(match[3]),
+              prerelease: match[4] ? match[4].split(".") : [],
+            };
+          };
+
+          const compareIdentifiers = (a, b) => {
+            const aIsNum = /^\d+$/.test(a);
+            const bIsNum = /^\d+$/.test(b);
+
+            if (aIsNum && bIsNum) return Number(a) - Number(b);
+            if (aIsNum && !bIsNum) return -1;
+            if (!aIsNum && bIsNum) return 1;
+            return a.localeCompare(b);
+          };
+
+          const compareSemver = (left, right) => {
+            if (left.major !== right.major) return left.major - right.major;
+            if (left.minor !== right.minor) return left.minor - right.minor;
+            if (left.patch !== right.patch) return left.patch - right.patch;
+
+            const leftPre = left.prerelease;
+            const rightPre = right.prerelease;
+
+            if (leftPre.length === 0 && rightPre.length === 0) return 0;
+            if (leftPre.length === 0) return 1;
+            if (rightPre.length === 0) return -1;
+
+            const maxLength = Math.max(leftPre.length, rightPre.length);
+            for (let i = 0; i < maxLength; i += 1) {
+              const leftId = leftPre[i];
+              const rightId = rightPre[i];
+              if (leftId === undefined) return -1;
+              if (rightId === undefined) return 1;
+
+              const cmp = compareIdentifiers(leftId, rightId);
+              if (cmp !== 0) return cmp;
+            }
+
+            return 0;
+          };
+
+          if (!currentNextVersion) {
+            console.log("true");
+            process.exit(0);
+          }
+
+          try {
+            const published = parseSemver(publishedVersion);
+            const currentNext = parseSemver(currentNextVersion);
+
+            // Keep "next" if it already points to a future version train.
+            const isCurrentNextFuture = compareSemver(currentNext, published) > 0;
+            console.log(isCurrentNextFuture ? "false" : "true");
+          } catch (error) {
+            console.error(String(error));
+            // Conservative fallback: keep existing "next" when versions are unparseable.
+            console.log("false");
+          }
+          NODE
+          )
+
+          echo "should_set_next=$SHOULD_SET_NEXT" >> "$GITHUB_OUTPUT"
+          if [ "$SHOULD_SET_NEXT" = "true" ]; then
+            echo "Will move npm 'next' to ${PACKAGE_VERSION} after publish."
+          else
+            echo "Keeping npm 'next' at ${CURRENT_NEXT_VERSION}; it is ahead of ${PACKAGE_VERSION}."
+          fi
+
       - name: Publish package with npm provenance (OIDC)
         if: steps.npm-version.outputs.should_publish == 'true'
         run: pnpm --filter react-hook-videojs publish --access public --provenance --no-git-checks --tag ${{ steps.dist-tag.outputs.tag }}
+
+      - name: Move npm "next" tag to this stable release
+        if: steps.npm-version.outputs.should_publish == 'true' && steps.dist-tag.outputs.tag == 'latest' && steps.next-tag.outputs.should_set_next == 'true'
+        run: npm dist-tag add "${{ steps.package-name.outputs.name }}@${{ steps.version.outputs.version }}" next
