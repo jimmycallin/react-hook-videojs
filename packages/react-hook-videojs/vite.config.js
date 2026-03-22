@@ -1,18 +1,19 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
-import pkg from "./package.json";
+import { dirname, isAbsolute, resolve } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const dependencies = pkg.dependencies ?? {};
-const peerDependencies = pkg.peerDependencies ?? {};
-
-const external = [
-  ...Object.keys(dependencies),
-  ...Object.keys(peerDependencies),
-];
+const isThirdPartyImport = (id) => {
+  if (id.startsWith("\0")) {
+    return false;
+  }
+  if (isAbsolute(id)) {
+    return false;
+  }
+  return !id.startsWith(".") && !id.startsWith("/");
+};
 
 export default defineConfig({
   plugins: [react()],
@@ -26,7 +27,7 @@ export default defineConfig({
     },
     sourcemap: true,
     rollupOptions: {
-      external,
+      external: isThirdPartyImport,
     },
   },
   test: {
