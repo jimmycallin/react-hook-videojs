@@ -21,6 +21,13 @@ Run commands from the repository root unless noted.
 - `pnpm --filter react-hook-videojs build`: builds library bundles and type declarations.
 - `pnpm run publish`: publishes the `react-hook-videojs` workspace.
 
+## Release & Publishing Flow
+
+- `packages/react-hook-videojs/package.json` intentionally keeps `"version": "0.0.0"` during normal development.
+- The real npm version is set only in the GitHub CI/tag release flow. Do not propose or require dedicated version-bump commits just to publish.
+- When doing local publish checks, use dry-run commands and expect `0.0.0` to fail against `latest` unless a non-`latest` tag is provided (for example `--tag next`).
+- Treat `0.0.0` as expected state, not as a packaging bug, unless the user explicitly asks to change release strategy.
+
 ## Coding Style & Naming Conventions
 
 - Formatting: Prettier (`npx prettier -c .` / `--write`).

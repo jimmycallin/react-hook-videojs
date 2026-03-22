@@ -13,7 +13,15 @@
   ],
   "author": "jimmycallin",
   "license": "MIT",
-  "repository": "jimmycallin/react-hook-videojs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jimmycallin/react-hook-videojs.git"
+  },
+  "homepage": "https://github.com/jimmycallin/react-hook-videojs#readme",
+  "bugs": {
+    "url": "https://github.com/jimmycallin/react-hook-videojs/issues"
+  },
+  "sideEffects": false,
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -22,7 +30,6 @@
     }
   },
   "source": "src/index.tsx",
-  "engineStrict": false,
   "engines": {
     "node": ">=16"
   },
