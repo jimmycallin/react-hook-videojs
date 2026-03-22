@@ -191,6 +191,39 @@ jobs:
         if: steps.npm-version.outputs.should_publish == 'true'
         run: pnpm --filter react-hook-videojs publish --access public --provenance --no-git-checks --tag ${{ steps.dist-tag.outputs.tag }}
 
+      - name: Exchange GitHub OIDC token for npm registry token (dist-tag)
+        id: npm-oidc-token
+        if: steps.npm-version.outputs.should_publish == 'true' && steps.dist-tag.outputs.tag == 'latest' && steps.next-tag.outputs.should_set_next == 'true'
+        env:
+          PACKAGE_NAME: ${{ steps.package-name.outputs.name }}
+        run: |
+          PACKAGE_NAME_ENCODED=$(node -p "encodeURIComponent(process.argv[1])" "$PACKAGE_NAME")
+
+          OIDC_RESPONSE=$(curl -sSfL \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org")
+          OIDC_ID_TOKEN=$(echo "$OIDC_RESPONSE" | jq -r '.value')
+
+          if [ -z "$OIDC_ID_TOKEN" ] || [ "$OIDC_ID_TOKEN" = "null" ]; then
+            echo "Failed to acquire GitHub OIDC id_token."
+            exit 1
+          fi
+
+          EXCHANGE_RESPONSE=$(curl -sSfL -X POST \
+            -H "Authorization: Bearer $OIDC_ID_TOKEN" \
+            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/${PACKAGE_NAME_ENCODED}")
+          NPM_OIDC_TOKEN=$(echo "$EXCHANGE_RESPONSE" | jq -r '.token')
+
+          if [ -z "$NPM_OIDC_TOKEN" ] || [ "$NPM_OIDC_TOKEN" = "null" ]; then
+            echo "Failed to exchange OIDC id_token for npm registry token."
+            exit 1
+          fi
+
+          echo "::add-mask::$NPM_OIDC_TOKEN"
+          echo "token=$NPM_OIDC_TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Move npm "next" tag to this stable release
         if: steps.npm-version.outputs.should_publish == 'true' && steps.dist-tag.outputs.tag == 'latest' && steps.next-tag.outputs.should_set_next == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ steps.npm-oidc-token.outputs.token }}
         run: npm dist-tag add "${{ steps.package-name.outputs.name }}@${{ steps.version.outputs.version }}" next
