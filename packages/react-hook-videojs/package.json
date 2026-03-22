@@ -3,6 +3,14 @@
   "type": "module",
   "version": "0.0.0",
   "description": "A simple react hook to easily integrate video.js with React",
+  "keywords": [
+    "react",
+    "react-hook",
+    "video.js",
+    "videojs",
+    "player",
+    "media"
+  ],
   "author": "jimmycallin",
   "license": "MIT",
   "repository": "jimmycallin/react-hook-videojs",
