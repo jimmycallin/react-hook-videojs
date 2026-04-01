@@ -13,7 +13,7 @@ importers:
         version: 4.0.18(vite@7.3.1(@types/node@25.3.3)(lightningcss@1.32.0))(vitest@4.0.18)
       '@vitest/browser-playwright':
         specifier: ^4.0.18
-        version: 4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(lightningcss@1.32.0))(vitest@4.0.18)
+        version: 4.0.18(playwright@1.59.0)(vite@7.3.1(@types/node@25.3.3)(lightningcss@1.32.0))(vitest@4.0.18)
       '@vitest/coverage-v8':
         specifier: ^4.0.18
         version: 4.0.18(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.3.3)(lightningcss@1.32.0))(vitest@4.0.18))(vitest@4.0.18)
@@ -33,8 +33,8 @@ importers:
         specifier: ^1.58.0
         version: 1.58.0
       playwright:
-        specifier: ^1.58.2
-        version: 1.58.2
+        specifier: ^1.59.0
+        version: 1.59.0
       react:
         specifier: ^19.2.4
         version: 19.2.4
@@ -1922,13 +1922,13 @@ packages:
     resolution: {integrity: sha512-afRERtHn54AlwaF2/+LFszyAANTCggGilmcmILUzEjvs3XgFZT+xE6+QWQcAGmu4xajy+Xtj7acLOPdx5/eXWQ==}
     hasBin: true
 
-  playwright-core@1.58.2:
-    resolution: {integrity: sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==}
+  playwright-core@1.59.0:
+    resolution: {integrity: sha512-PW/X/IoZ6BMUUy8rpwHEZ8Kc0IiLIkgKYGNFaMs5KmQhcfLILNx9yCQD0rnWeWfz1PNeqcFP1BsihQhDOBCwZw==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.58.2:
-    resolution: {integrity: sha512-vA30H8Nvkq/cPBnNw4Q8TWz1EJyqgpuinBcHET0YVJVFldr8JDNiU9LaWAE1KqSkRYazuaBhTpB5ZzShOezQ6A==}
+  playwright@1.59.0:
+    resolution: {integrity: sha512-wihGScriusvATUxmhfENxg0tj1vHEFeIwxlnPFKQTOQVd7aG08mUfvvniRP/PtQOC+2Bs52kBOC/Up1jTXeIbw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3065,11 +3065,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/browser-playwright@4.0.18(playwright@1.58.2)(vite@7.3.1(@types/node@25.3.3)(lightningcss@1.32.0))(vitest@4.0.18)':
+  '@vitest/browser-playwright@4.0.18(playwright@1.59.0)(vite@7.3.1(@types/node@25.3.3)(lightningcss@1.32.0))(vitest@4.0.18)':
     dependencies:
       '@vitest/browser': 4.0.18(vite@7.3.1(@types/node@25.3.3)(lightningcss@1.32.0))(vitest@4.0.18)
       '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.3.3)(lightningcss@1.32.0))
-      playwright: 1.58.2
+      playwright: 1.59.0
       tinyrainbow: 3.0.3
       vitest: 4.0.18(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jsdom@29.0.1)(lightningcss@1.32.0)
     transitivePeerDependencies:
@@ -3078,11 +3078,11 @@ snapshots:
       - utf-8-validate
       - vite
 
-  '@vitest/browser-playwright@4.0.18(playwright@1.58.2)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.3.3)(esbuild@0.27.3))(vitest@4.0.18)':
+  '@vitest/browser-playwright@4.0.18(playwright@1.59.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.3.3)(esbuild@0.27.3))(vitest@4.0.18)':
     dependencies:
       '@vitest/browser': 4.0.18(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.3.3)(esbuild@0.27.3))(vitest@4.0.18)
       '@vitest/mocker': 4.0.18(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.3.3)(esbuild@0.27.3))
-      playwright: 1.58.2
+      playwright: 1.59.0
       tinyrainbow: 3.0.3
       vitest: 4.0.18(@types/node@25.3.3)(@vitest/browser-playwright@4.0.18)(jsdom@29.0.1)(lightningcss@1.32.0)
     transitivePeerDependencies:
@@ -4040,11 +4040,11 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.6
 
-  playwright-core@1.58.2: {}
+  playwright-core@1.59.0: {}
 
-  playwright@1.58.2:
+  playwright@1.59.0:
     dependencies:
-      playwright-core: 1.58.2
+      playwright-core: 1.59.0
     optionalDependencies:
       fsevents: 2.3.2
 
@@ -4378,7 +4378,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.3.3
-      '@vitest/browser-playwright': 4.0.18(playwright@1.58.2)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.3.3)(esbuild@0.27.3))(vitest@4.0.18)
+      '@vitest/browser-playwright': 4.0.18(playwright@1.59.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.3.3)(esbuild@0.27.3))(vitest@4.0.18)
       jsdom: 29.0.1
     transitivePeerDependencies:
       - jiti
