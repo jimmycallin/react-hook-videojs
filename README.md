@@ -1,5 +1,10 @@
 # react-hook-videojs
 
+> [!WARNING]
+> **Archived. No longer maintained.**
+>
+> Video.js 10 has native React support built in (`@videojs/react`: a `<Video>` component, a `usePlayer()` hook, `createPlayer()`), which is the lifecycle wiring this hook existed to paper over. Use the built-in API instead. See the [v10 announcement](https://videojs.org/blog/videojs-v10-beta-hello-world-again).
+
 > A React hook for integrating Video.js with React 19.
 > It handles player setup, disposal, Strict Mode behavior, and options-driven reinitialization with a small, predictable API.
 
